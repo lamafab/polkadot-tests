@@ -47,7 +47,7 @@ Multiple tests can be found in the `tests/` directory. Each test is structured a
 {
    "name":"Fork Awareness",
    "type":"BlockChainFork",
-   "description":"Mutliple blocks were produced on the same parent block",
+   "description":"Multiple blocks were produced on the same parent block",
    "genesis":"genesis.json",
    "blocks":{
       "block":{
