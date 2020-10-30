@@ -408,7 +408,9 @@ impl_runtime_apis! {
 
 		fn execute_block(block: Block) {
 			let mut log = LogStmt::new(CoreExecuteBlock);
-			Executive::execute_block(block)
+			log.push("block_hash", block.encode());
+			Executive::execute_block(block);
+			log.push("storage_root", storage_root());
 		}
 
 		fn initialize_block(header: &<Block as BlockT>::Header) {
