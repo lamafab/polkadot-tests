@@ -30,13 +30,20 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_balances::Call as BalancesCall;
 pub use sp_runtime::{Permill, Perbill};
 pub use frame_support::{
-	construct_runtime, parameter_types, StorageValue,
+	construct_runtime, parameter_types, StorageValue, print, storage_root,
 	traits::{KeyOwnerProofSystem, Randomness},
 	weights::{
 		Weight, IdentityFee,
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 	},
 };
+
+// Custom imports
+extern crate alloc;
+use alloc::string::String;
+use lite_json::{JsonObject, JsonValue};
+use lite_json::traits::Serialize;
+use codec::Encode;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -309,6 +316,90 @@ pub type Executive = frame_executive::Executive<
 	AllModules,
 >;
 
+struct LogStmt {
+	inner: JsonObject,
+}
+
+impl LogStmt {
+	fn new(func: RuntimeFunction) -> Self {
+		LogStmt {
+			inner: {
+				let mut obj = JsonObject::new();
+				obj.push(("runtime_function".to_chars(), func.to_json()));
+				obj.push(("logs".to_chars(), JsonValue::Object(JsonObject::new())));
+				obj
+			}
+		}
+	}
+	fn push<K: ToChars, V: ToJson>(&mut self, key: K, value: V) {
+		match self.inner.last_mut().unwrap().1 {
+			JsonValue::Object(ref mut obj) => obj.push((key.to_chars(), value.to_json())),
+			_ => panic!(),
+		}
+	}
+}
+
+impl Drop for LogStmt {
+	fn drop(&mut self) {
+		print(sp_std::str::from_utf8(
+			JsonValue::Object(
+				// Cloning is not ideal, but this is just a test runtime anyway.
+				self.inner.clone()
+			)
+			.serialize()
+			.as_slice()
+		).unwrap())
+	}
+}
+
+enum RuntimeFunction {
+	CoreExecuteBlock,
+}
+
+use RuntimeFunction::*;
+
+trait ToChars {
+	fn to_chars(&self) -> Vec<char>;
+}
+
+impl ToChars for &str {
+	fn to_chars(&self) -> Vec<char> {
+		self.chars().collect()
+	}
+}
+
+impl ToChars for String {
+	fn to_chars(&self) -> Vec<char> {
+		self.chars().collect()
+	}
+}
+
+trait ToJson {
+	fn to_json(&self) -> JsonValue;
+}
+
+impl ToJson for RuntimeFunction {
+	fn to_json(&self) -> JsonValue {
+		use RuntimeFunction::*;
+
+		match self {
+			CoreExecuteBlock => "Core_execute_block".to_json(),
+		}
+	}
+}
+
+impl ToJson for &str {
+	fn to_json(&self) -> JsonValue {
+		JsonValue::String(self.to_chars())
+	}
+}
+
+impl ToJson for Vec<u8> {
+	fn to_json(&self) -> JsonValue {
+		JsonValue::String(hex::encode(self).to_chars())
+	}
+}
+
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -316,6 +407,7 @@ impl_runtime_apis! {
 		}
 
 		fn execute_block(block: Block) {
+			let mut log = LogStmt::new(CoreExecuteBlock);
 			Executive::execute_block(block)
 		}
 
