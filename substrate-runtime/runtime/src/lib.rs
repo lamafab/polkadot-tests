@@ -354,6 +354,9 @@ impl Drop for LogStmt {
 
 pub enum RuntimeFunction {
 	CoreExecuteBlock,
+	CoreInitializeBlock,
+	BlockBuilderApplyExtrinsic,
+	BlockBuilderFinalizeBlock,
 }
 
 use RuntimeFunction::*;
@@ -362,6 +365,9 @@ impl RuntimeFunction {
 	pub fn as_str(&self) -> &'static str {
 		match self {
 			CoreExecuteBlock => "Core_execute_block",
+			CoreInitializeBlock => "Core_initialize_block",
+			BlockBuilderApplyExtrinsic => "BlockBuilder_apply_extrinsic",
+			BlockBuilderFinalizeBlock => "BlockBuilder_finalize_block",
 		}
 	}
 }
