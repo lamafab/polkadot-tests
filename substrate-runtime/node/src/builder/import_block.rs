@@ -1,12 +1,7 @@
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Blocks {
-    blocks: Vec<Block>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Block {
+    pub block: String,
     pub header: Header,
     pub extrinsics: Vec<String>,
     pub post_state: String,

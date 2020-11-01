@@ -45,15 +45,16 @@ Multiple tests can be found in the `tests/` directory. Each test is structured a
 
 ```json
 {
-   "name":"Fork Awareness",
-   "type":"BlockChainFork",
-   "description":"Multiple blocks were produced on the same parent block",
-   "genesis":"genesis.json",
-   "blocks":{
-      "block":{
+   "name": "Fork Awareness",
+   "type": "BlockChainFork",
+   "description": "Multiple blocks were produced on the same parent block",
+   "genesis": "genesis.json",
+   "data":[
+      {
+         "block": "Block 1",
          "header":{
             "parentHash":"0xd380bee22de487a707cbda65dd9d4e2188f736908c42cf390c8919d4f7fc547c",
-            "number":"0x5",
+            "number":"0x1",
             "stateRoot":"0x01045dae0c5d93a84c3dc1f0131126aa6aa1feb26d10f029166fc0c607468968",
             "extrinsicsRoot":"0xa9439bbc818bd95eadb2c5349bef77ee7cc80a282fcceb9670c2c12f939211b4",
             "digest":{
@@ -69,10 +70,11 @@ Multiple tests can be found in the `tests/` directory. Each test is structured a
          ],
          "postState": "0x8d4ea2ea4e834faa1ed492f66f0b28ea56fc9061b7e89623114968e2cf59987a"
       },
-      "block": {
-          ...
+      {
+         "block": "Block 2",
+         ...
       }
-   }
+   ]
 }
 ```
 
