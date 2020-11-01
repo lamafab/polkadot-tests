@@ -23,7 +23,7 @@ impl InitExecutor {
             ext: TestExternalities::default(),
         }
     }
-    pub fn call(&mut self, func: RuntimeFunction, data: &[u8]) -> Vec<u8> {
+    pub fn call(&mut self, func: RuntimeFunction, data: &[u8]) -> Result<Vec<u8>, String> {
         self.exec.call_in_wasm(
             &self.blob,
             None,
@@ -31,6 +31,6 @@ impl InitExecutor {
             data,
             &mut self.ext.ext(),
             MissingHostFunctions::Disallow,
-        ).unwrap()
+        )
     }
 }
