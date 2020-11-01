@@ -358,6 +358,14 @@ pub enum RuntimeFunction {
 
 use RuntimeFunction::*;
 
+impl RuntimeFunction {
+	pub fn as_str(&self) -> &'static str {
+		match self {
+			CoreExecuteBlock => "Core_execute_block",
+		}
+	}
+}
+
 trait ToChars {
 	fn to_chars(&self) -> Vec<char>;
 }
@@ -380,11 +388,7 @@ trait ToJson {
 
 impl ToJson for RuntimeFunction {
 	fn to_json(&self) -> JsonValue {
-		use RuntimeFunction::*;
-
-		match self {
-			CoreExecuteBlock => "Core_execute_block".to_json(),
-		}
+		self.as_str().to_json()
 	}
 }
 
