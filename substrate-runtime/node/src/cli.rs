@@ -1,3 +1,4 @@
+use super::builder;
 use sc_cli::RunCmd;
 use structopt::StructOpt;
 
@@ -36,4 +37,6 @@ pub enum Subcommand {
     /// The custom benchmark subcommmand benchmarking runtime pallets.
     #[structopt(name = "benchmark", about = "Benchmark runtime pallets.")]
     Benchmark(frame_benchmarking_cli::BenchmarkCmd),
+
+    PalletBalances(builder::PalletBalancesCmd),
 }

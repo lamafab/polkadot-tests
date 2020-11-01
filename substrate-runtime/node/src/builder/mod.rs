@@ -1,6 +1,7 @@
-pub mod import_block;
-pub mod primitives;
+mod primitives;
+mod pallet_balances;
 
+pub use pallet_balances::PalletBalancesCmd;
 use node_template_runtime::{
     Address, Block, BlockNumber, Header, Signature, SignedExtra, UncheckedExtrinsic,
 };

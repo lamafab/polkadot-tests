@@ -141,7 +141,10 @@ pub fn run() -> sc_cli::Result<()> {
 				You can enable it with `--features runtime-benchmarks`."
                     .into())
             }
-        }
+		}
+		Some(Subcommand::PalletBalances(cmd)) => {
+			unimplemented!()
+		}
         None => {
             let runner = cli.create_runner(&cli.run)?;
             runner.run_node_until_exit(|config| match config.role {
