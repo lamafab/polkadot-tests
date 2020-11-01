@@ -352,11 +352,25 @@ impl Drop for LogStmt {
 	}
 }
 
-enum RuntimeFunction {
+pub enum RuntimeFunction {
 	CoreExecuteBlock,
+	CoreInitializeBlock,
+	BlockBuilderApplyExtrinsic,
+	BlockBuilderFinalizeBlock,
 }
 
 use RuntimeFunction::*;
+
+impl RuntimeFunction {
+	pub fn as_str(&self) -> &'static str {
+		match self {
+			CoreExecuteBlock => "Core_execute_block",
+			CoreInitializeBlock => "Core_initialize_block",
+			BlockBuilderApplyExtrinsic => "BlockBuilder_apply_extrinsic",
+			BlockBuilderFinalizeBlock => "BlockBuilder_finalize_block",
+		}
+	}
+}
 
 trait ToChars {
 	fn to_chars(&self) -> Vec<char>;
@@ -380,11 +394,7 @@ trait ToJson {
 
 impl ToJson for RuntimeFunction {
 	fn to_json(&self) -> JsonValue {
-		use RuntimeFunction::*;
-
-		match self {
-			CoreExecuteBlock => "Core_execute_block".to_json(),
-		}
+		self.as_str().to_json()
 	}
 }
 
