@@ -51,7 +51,7 @@ Multiple tests can be found in the `tests/` directory. Each test is structured a
    "genesis": "genesis.json",
    "data":[
       {
-         "block": "Block 1",
+         "description": "Block 1",
          "header":{
             "parentHash":"0xd380bee22de487a707cbda65dd9d4e2188f736908c42cf390c8919d4f7fc547c",
             "number":"0x1",

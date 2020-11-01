@@ -1,5 +1,5 @@
-pub mod primitives;
 pub mod import_block;
+pub mod primitives;
 
 use node_template_runtime::{
     Address, Block, BlockNumber, Header, Signature, SignedExtra, UncheckedExtrinsic,

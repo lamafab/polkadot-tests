@@ -1,4 +1,4 @@
-use super::{BlockNumber, Header};
+use super::{BlockNumber, Header, Block, UncheckedExtrinsic};
 use codec::Decode;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
@@ -45,10 +45,30 @@ pub struct TxtExtrinsic(String);
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtBlock {
-    pub block: String,
+    pub description: String,
     pub header: TxtHeader,
     pub extrinsics: Vec<TxtExtrinsic>,
     pub post_state: TxtHash,
+}
+
+impl TryFrom<TxtBlock> for Block {
+    type Error = failure::Error;
+
+    fn try_from(val: TxtBlock) -> Result<Self, Self::Error> {
+        Ok(
+            Block {
+                header: val.header.try_into()?,
+                extrinsics: val
+                    .extrinsics
+                    .iter()
+                    .map(|e| hex::decode(e.0.replace("0x", "")))
+                    .collect::<Result<Vec<Vec<u8>>, _>>()?
+                    .iter_mut()
+                    .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()))
+                    .collect::<Result<Vec<UncheckedExtrinsic>, _>>()?,
+            }
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,10 +101,10 @@ impl TryFrom<TxtHeader> for Header {
                     .digest
                     .logs
                     .iter()
-                    .map(|i| hex::decode(i.replace("0x", "")))
+                    .map(|d| hex::decode(d.replace("0x", "")))
                     .collect::<Result<Vec<Vec<u8>>, _>>()?
                     .iter_mut()
-                    .map(|i| DigestItem::decode(&mut i.as_slice()))
+                    .map(|d| DigestItem::decode(&mut d.as_slice()))
                     .collect::<Result<Vec<DigestItem<H256>>, _>>()?,
             },
         })
