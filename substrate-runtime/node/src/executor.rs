@@ -1,8 +1,8 @@
-use sc_executor::{WasmExecutor, CallInWasm, WasmExecutionMethod};
+use node_template_runtime::{RuntimeFunction, WASM_BINARY};
 use sc_executor::sp_wasm_interface::HostFunctions;
-use sp_io::{SubstrateHostFunctions, TestExternalities};
+use sc_executor::{CallInWasm, WasmExecutionMethod, WasmExecutor};
 use sp_core::traits::MissingHostFunctions;
-use node_template_runtime::{WASM_BINARY, RuntimeFunction};
+use sp_io::{SubstrateHostFunctions, TestExternalities};
 
 pub struct InitExecutor {
     exec: WasmExecutor,
@@ -17,7 +17,7 @@ impl InitExecutor {
                 WasmExecutionMethod::Interpreted,
                 Some(8),
                 SubstrateHostFunctions::host_functions(),
-                8
+                8,
             ),
             blob: WASM_BINARY.expect("Wasm binary not available").to_vec(),
             ext: TestExternalities::default(),
