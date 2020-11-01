@@ -12,7 +12,7 @@ impl TryFrom<TxtHash> for H256 {
     type Error = failure::Error;
 
     fn try_from(val: TxtHash) -> Result<Self, Self::Error> {
-        Ok(H256::from_slice(&hex::decode(val.0)?))
+        Ok(H256::from_slice(&hex::decode(&val.0.replace("0x", ""))?))
     }
 }
 
@@ -48,7 +48,7 @@ impl TryFrom<TxtHeader> for Header {
         Ok(
             Header {
                 parent_hash: val.parent_hash.try_into()?,
-                number: BlockNumber::from_str_radix(&val.number, 16)?,
+                number: BlockNumber::from_str_radix(&val.number.replace("0x", ""), 16)?,
                 state_root: val.state_root.try_into()?,
                 extrinsics_root: val.extrinsics_root.try_into()?,
                 digest: Digest {
@@ -56,7 +56,7 @@ impl TryFrom<TxtHeader> for Header {
                         .digest
                         .logs
                         .iter()
-                        .map(|i| hex::decode(i))
+                        .map(|i| hex::decode(i.replace("0x", "")))
                         .collect::<Result<Vec<Vec<u8>>, _>>()?
                         .iter_mut()
                         .map(|i| DigestItem::decode(&mut i.as_slice()))
@@ -64,6 +64,45 @@ impl TryFrom<TxtHeader> for Header {
                 },
             }
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Convenience trait for tests.
+    pub trait ToH256 {
+        fn h256(&self) -> H256;
+    }
+
+    impl ToH256 for &str {
+        fn h256(&self) -> H256 {
+            H256::from_slice(&hex::decode(&self.replace("0x", "")).unwrap())
+        }
+    }
+
+    #[test]
+    fn deserialize_to_header() {
+        let txt_header: TxtHeader = serde_json::from_slice(r#"
+         {
+            "parentHash":"0xd380bee22de487a707cbda65dd9d4e2188f736908c42cf390c8919d4f7fc547c",
+            "number":"0x01",
+            "stateRoot":"0x01045dae0c5d93a84c3dc1f0131126aa6aa1feb26d10f029166fc0c607468968",
+            "extrinsicsRoot":"0xa9439bbc818bd95eadb2c5349bef77ee7cc80a282fcceb9670c2c12f939211b4",
+            "digest":{
+               "logs":[
+                  "0x0642414245b50103000000009ddecc0f00000000a8a9c1d717f3904506e333d0ebbf4eed297d50ab9b7c57458b10182f1c84025ef09d3fb5b5f4cb81688939e6363f95aa8d91645fa7b8abc0a6f37812c777c307df51071082d3ff89d4e1b5ad8f5cd3711ada74292c4808237bdf2b076edb280c",
+                  "0x05424142450101f66230eb71705213dd10256e3ca5af07492ac420128ecb8bc98f1fcd1f74986d348addbabd4813f0022835b21d720ecadce66a57480d87dfd51d77f3474cb68b"
+               ]
+            }
+         }
+        "#.as_bytes()).unwrap();
+
+        let header = Header::try_from(txt_header).unwrap();
+        assert_eq!(header.parent_hash, "0xd380bee22de487a707cbda65dd9d4e2188f736908c42cf390c8919d4f7fc547c".h256());
+        assert_eq!(header.state_root, "0x01045dae0c5d93a84c3dc1f0131126aa6aa1feb26d10f029166fc0c607468968".h256());
+        assert_eq!(header.extrinsics_root, "0xa9439bbc818bd95eadb2c5349bef77ee7cc80a282fcceb9670c2c12f939211b4".h256());
     }
 }
 
