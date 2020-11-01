@@ -67,7 +67,7 @@ Multiple tests can be found in the `tests/` directory. Each test is structured a
             "0x280403000bb07fa1517201",
             "0x1004140000"
          ],
-         "post_state": "0x8d4ea2ea4e834faa1ed492f66f0b28ea56fc9061b7e89623114968e2cf59987a"
+         "postState": "0x8d4ea2ea4e834faa1ed492f66f0b28ea56fc9061b7e89623114968e2cf59987a"
       },
       "block": {
           ...
