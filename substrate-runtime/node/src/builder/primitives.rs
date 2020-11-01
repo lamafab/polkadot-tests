@@ -7,7 +7,7 @@ use std::convert::{TryFrom, TryInto};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TestLayout<T> {
+pub struct TxtTestLayout<T> {
     pub name: String,
     #[serde(rename = "type")]
     pub test_ty: String,
@@ -40,11 +40,15 @@ impl TryFrom<TxtBlockNumber> for BlockNumber {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TxtExtrinsic(String);
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TxtBlock {
     pub block: String,
     pub header: TxtHeader,
-    pub extrinsics: Vec<String>,
-    pub post_state: String,
+    pub extrinsics: Vec<TxtExtrinsic>,
+    pub post_state: TxtHash,
 }
 
 #[derive(Serialize, Deserialize)]
