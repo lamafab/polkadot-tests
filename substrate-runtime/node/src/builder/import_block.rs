@@ -1,7 +1,20 @@
 use super::{Header, BlockNumber};
 use sp_runtime::traits::BlakeTwo256;
 use sp_core::H256;
-use std::convert::TryFrom;
+use sp_runtime::generic::{Digest, DigestItem};
+use codec::Decode;
+use std::convert::{TryFrom, TryInto};
+
+#[derive(Serialize, Deserialize)]
+pub struct TxtHash(String);
+
+impl TryFrom<TxtHash> for H256 {
+    type Error = failure::Error;
+
+    fn try_from(val: TxtHash) -> Result<Self, Self::Error> {
+        Ok(H256::from_slice(&hex::decode(val.0)?))
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,10 +28,10 @@ pub struct TxtBlock {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtHeader {
-    pub parent_hash: String,
+    pub parent_hash: TxtHash,
     pub number: String,
-    pub state_root: String,
-    pub extrinsics_root: String,
+    pub state_root: TxtHash,
+    pub extrinsics_root: TxtHash,
     pub digest: TxtDigest,
 }
 
@@ -34,11 +47,21 @@ impl TryFrom<TxtHeader> for Header {
     fn try_from(val: TxtHeader) -> Result<Self, Self::Error> {
         Ok(
             Header {
-                parent_hash: H256::from_slice(&hex::decode(&val.parent_hash)?),
+                parent_hash: val.parent_hash.try_into()?,
                 number: BlockNumber::from_str_radix(&val.number, 16)?,
-                state_root: H256::from_slice(&hex::decode(&val.parent_hash)?),
-                extrinsics_root: H256::from_slice(&hex::decode(&val.parent_hash)?),
-                digest: unimplemented!(),
+                state_root: val.state_root.try_into()?,
+                extrinsics_root: val.extrinsics_root.try_into()?,
+                digest: Digest {
+                    logs: val
+                        .digest
+                        .logs
+                        .iter()
+                        .map(|i| hex::decode(i))
+                        .collect::<Result<Vec<Vec<u8>>, _>>()?
+                        .iter_mut()
+                        .map(|i| DigestItem::decode(&mut i.as_slice()))
+                        .collect::<Result<Vec<DigestItem<H256>>, _>>()?
+                },
             }
         )
     }
