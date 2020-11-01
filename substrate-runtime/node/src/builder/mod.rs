@@ -3,7 +3,7 @@ mod pallet_balances;
 
 pub use pallet_balances::PalletBalancesCmd;
 use node_template_runtime::{
-    Address, Block, BlockNumber, Header, Signature, SignedExtra, UncheckedExtrinsic,
+    Address, Block, BlockNumber, Header, Signature, SignedExtra, UncheckedExtrinsic, Balance,
 };
 
 /*
