@@ -352,7 +352,7 @@ impl Drop for LogStmt {
 	}
 }
 
-enum RuntimeFunction {
+pub enum RuntimeFunction {
 	CoreExecuteBlock,
 }
 
