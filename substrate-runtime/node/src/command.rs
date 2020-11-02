@@ -64,7 +64,10 @@ impl SubstrateCli for Cli {
 pub fn run() -> sc_cli::Result<()> {
     let cli = Cli::from_args();
 
-    match &cli.subcommand {
+    match cli.subcommand {
+        Some(Subcommand::PalletBalances(cmd)) => cmd.run().map(|_| ()).unwrap(),
+        _ => unimplemented!(),
+        /*
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
@@ -138,7 +141,7 @@ pub fn run() -> sc_cli::Result<()> {
                 runner.sync_run(|config| cmd.run::<Block, service::Executor>(config))
             } else {
                 Err("Benchmarking wasn't enabled when building the node. \
-				You can enable it with `--features runtime-benchmarks`."
+                You can enable it with `--features runtime-benchmarks`."
                     .into())
             }
         }
@@ -150,5 +153,8 @@ pub fn run() -> sc_cli::Result<()> {
                 _ => service::new_full(config),
             })
         }
+        */
     }
+
+    Ok(())
 }
