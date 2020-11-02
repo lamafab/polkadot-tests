@@ -1,9 +1,11 @@
+mod balances;
 mod primitives;
-mod pallet_balances;
 
-pub use pallet_balances::PalletBalancesCmd;
+pub use balances::PalletBalancesCmd;
+// `AccountId` -> `sp_runtime::AccountId32`
 use node_template_runtime::{
-    Address, Block, BlockNumber, Header, Signature, SignedExtra, UncheckedExtrinsic, Balance,
+    AccountId, Address, Balance, Block, BlockNumber, Header, Signature, SignedExtra,
+    UncheckedExtrinsic,
 };
 
 /*

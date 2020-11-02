@@ -6,11 +6,11 @@ extern crate serde;
 mod chain_spec;
 #[macro_use]
 mod service;
+mod builder;
 mod cli;
 mod command;
-mod rpc;
-mod builder;
 mod executor;
+mod rpc;
 
 type Result<T> = std::result::Result<T, failure::Error>;
 

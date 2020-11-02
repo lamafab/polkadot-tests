@@ -1,4 +1,4 @@
-use super::{BlockNumber, Header, Block, UncheckedExtrinsic};
+use super::{Block, BlockNumber, Header, UncheckedExtrinsic};
 use codec::Decode;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
@@ -55,19 +55,17 @@ impl TryFrom<TxtBlock> for Block {
     type Error = failure::Error;
 
     fn try_from(val: TxtBlock) -> Result<Self, Self::Error> {
-        Ok(
-            Block {
-                header: val.header.try_into()?,
-                extrinsics: val
-                    .extrinsics
-                    .iter()
-                    .map(|e| hex::decode(e.0.replace("0x", "")))
-                    .collect::<Result<Vec<Vec<u8>>, _>>()?
-                    .iter_mut()
-                    .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()))
-                    .collect::<Result<Vec<UncheckedExtrinsic>, _>>()?,
-            }
-        )
+        Ok(Block {
+            header: val.header.try_into()?,
+            extrinsics: val
+                .extrinsics
+                .iter()
+                .map(|e| hex::decode(e.0.replace("0x", "")))
+                .collect::<Result<Vec<Vec<u8>>, _>>()?
+                .iter_mut()
+                .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()))
+                .collect::<Result<Vec<UncheckedExtrinsic>, _>>()?,
+        })
     }
 }
 
