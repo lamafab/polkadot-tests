@@ -1,8 +1,8 @@
-use super::{AccountId, Address, SignedExtra, UncheckedExtrinsic};
+use super::{AccountId, Address, Call, SignedExtra, UncheckedExtrinsic};
 use crate::chain_spec::get_account_id_from_seed;
 use crate::Result;
 use codec::Encode;
-use pallet_balances::Call as BalancesCall;
+use sp_core::crypto::Pair;
 use sp_core::sr25519;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
@@ -12,10 +12,10 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 pub struct PalletBalancesCmd {
     #[structopt(subcommand)]
-    call: Call,
+    call: CallCmd,
 }
 
-fn sign_tx<Call: Encode, Extra: SignedExtension>(function: Call, nonce: u32) -> Result<()> {
+fn sign_tx(signer: sr25519::Pair, function: Call, nonce: u32) -> Result<UncheckedExtrinsic> {
     fn extra_err() -> failure::Error {
         failure::err_msg("Failed to retrieve additionally signed extra")
     }
@@ -51,7 +51,16 @@ fn sign_tx<Call: Encode, Extra: SignedExtension>(function: Call, nonce: u32) -> 
 
     let payload = SignedPayload::from_raw(function, extra, additional_extra);
 
-    Ok(())
+    let signature = payload.using_encoded(|payload| signer.sign(payload));
+
+    let (function, extra, _) = payload.deconstruct();
+
+    Ok(UncheckedExtrinsic::new_signed(
+        function,
+        signer.public().into(),
+        signature.into(),
+        extra,
+    ))
 }
 
 #[derive(Debug)]
@@ -66,7 +75,7 @@ impl FromStr for RawPrivateKey {
 }
 
 #[derive(Debug, StructOpt)]
-enum Call {
+enum CallCmd {
     Transfer {
         from: RawPrivateKey,
         to: Address,
@@ -77,7 +86,7 @@ enum Call {
 impl PalletBalancesCmd {
     pub fn run(&self) -> Result<()> {
         match &self.call {
-            Call::Transfer { from, to, balance } => {
+            CallCmd::Transfer { from, to, balance } => {
                 //let _ = UncheckedExtrinsics::new_signed(BalancesCall::transer(), )
             }
         }
