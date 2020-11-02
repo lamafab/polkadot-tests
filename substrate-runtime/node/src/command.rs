@@ -15,56 +15,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::cli::{Cli, Subcommand};
-use crate::{chain_spec, service};
+use crate::{Result, chain_spec, service, builder};
 use node_template_runtime::Block;
 use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
+use structopt::StructOpt;
 
-impl SubstrateCli for Cli {
-    fn impl_name() -> String {
-        "Substrate Node".into()
-    }
-
-    fn impl_version() -> String {
-        env!("SUBSTRATE_CLI_IMPL_VERSION").into()
-    }
-
-    fn description() -> String {
-        env!("CARGO_PKG_DESCRIPTION").into()
-    }
-
-    fn author() -> String {
-        env!("CARGO_PKG_AUTHORS").into()
-    }
-
-    fn support_url() -> String {
-        "support.anonymous.an".into()
-    }
-
-    fn copyright_start_year() -> i32 {
-        2017
-    }
-
-    fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-        Ok(match id {
-            "dev" => Box::new(chain_spec::development_config()?),
-            path => Box::new(chain_spec::ChainSpec::from_json_file(
-                std::path::PathBuf::from(path),
-            )?),
-        })
-    }
-
-    fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-        &node_template_runtime::VERSION
-    }
+#[derive(Debug, StructOpt)]
+pub enum Cli {
+    PalletBalances(builder::PalletBalancesCmd),
 }
 
 /// Parse and run command line arguments
-pub fn run() -> sc_cli::Result<()> {
+pub fn run() -> Result<()> {
     let cli = Cli::from_args();
 
-    match &cli.subcommand {
+    match cli {
+        Cli::PalletBalances(cmd) => cmd.run().map(|_| ()),
+        /*
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
@@ -142,7 +110,6 @@ pub fn run() -> sc_cli::Result<()> {
                     .into())
             }
         }
-        Some(Subcommand::PalletBalances(cmd)) => unimplemented!(),
         None => {
             let runner = cli.create_runner(&cli.run)?;
             runner.run_node_until_exit(|config| match config.role {
@@ -150,5 +117,6 @@ pub fn run() -> sc_cli::Result<()> {
                 _ => service::new_full(config),
             })
         }
+        */
     }
 }

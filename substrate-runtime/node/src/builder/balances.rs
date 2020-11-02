@@ -66,7 +66,7 @@ impl FromStr for RawPrivateKey {
 
     fn from_str(val: &str) -> Result<Self> {
         Ok(RawPrivateKey(
-            hex::decode(val).map_err(|err| err.into()).and_then(|b| {
+            hex::decode(val.replace("0x", "")).map_err(|err| err.into()).and_then(|b| {
                 if b.len() == 32 {
                     Ok(b)
                 } else {
@@ -111,10 +111,13 @@ pub struct PalletBalancesCmd {
 #[derive(Debug, StructOpt)]
 enum CallCmd {
     Transfer {
+        #[structopt(short, long)]
         from: RawPrivateKey,
+        #[structopt(short, long)]
         to: Address,
+        #[structopt(short, long)]
         balance: Balance,
-    },
+    }
 }
 
 impl PalletBalancesCmd {
