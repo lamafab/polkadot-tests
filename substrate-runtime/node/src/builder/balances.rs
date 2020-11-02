@@ -1,19 +1,14 @@
-use super::{AccountId, Address, Call, SignedExtra, UncheckedExtrinsic};
+use super::{AccountId, Address, Balance, Call, SignedExtra, UncheckedExtrinsic};
 use crate::chain_spec::get_account_id_from_seed;
 use crate::Result;
-use codec::Encode;
+use codec::{Decode, Encode};
+use pallet_balances::Call as BalancesCall;
 use sp_core::crypto::Pair;
 use sp_core::sr25519;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 use std::str::FromStr;
 use structopt::StructOpt;
-
-#[derive(Debug, StructOpt)]
-pub struct PalletBalancesCmd {
-    #[structopt(subcommand)]
-    call: CallCmd,
-}
 
 fn sign_tx(signer: sr25519::Pair, function: Call, nonce: u32) -> Result<UncheckedExtrinsic> {
     fn extra_err() -> failure::Error {
@@ -70,8 +65,47 @@ impl FromStr for RawPrivateKey {
     type Err = failure::Error;
 
     fn from_str(val: &str) -> Result<Self> {
-        Ok(RawPrivateKey(hex::decode(val)?))
+        Ok(RawPrivateKey(
+            hex::decode(val).map_err(|err| err.into()).and_then(|b| {
+                if b.len() == 32 {
+                    Ok(b)
+                } else {
+                    Err(failure::err_msg("Private key seed must be 32 bytes"))
+                }
+            })?,
+        ))
     }
+}
+
+impl From<RawPrivateKey> for sr25519::Pair {
+    fn from(val: RawPrivateKey) -> Self {
+        sr25519::Pair::from_seed(&{
+            let mut seed = [0; 32];
+            seed.copy_from_slice(&val.0);
+            seed
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct RawExtrinsic(Vec<u8>);
+
+impl From<Vec<u8>> for RawExtrinsic {
+    fn from(val: Vec<u8>) -> Self {
+        RawExtrinsic(val)
+    }
+}
+
+impl From<UncheckedExtrinsic> for RawExtrinsic {
+    fn from(val: UncheckedExtrinsic) -> Self {
+        RawExtrinsic::from(val.encode())
+    }
+}
+
+#[derive(Debug, StructOpt)]
+pub struct PalletBalancesCmd {
+    #[structopt(subcommand)]
+    call: CallCmd,
 }
 
 #[derive(Debug, StructOpt)]
@@ -79,18 +113,21 @@ enum CallCmd {
     Transfer {
         from: RawPrivateKey,
         to: Address,
-        balance: u128,
+        balance: Balance,
     },
 }
 
 impl PalletBalancesCmd {
-    pub fn run(&self) -> Result<()> {
-        match &self.call {
-            CallCmd::Transfer { from, to, balance } => {
-                //let _ = UncheckedExtrinsics::new_signed(BalancesCall::transer(), )
-            }
-        }
+    pub fn run(self) -> Result<RawExtrinsic> {
+        let raw_tx = match self.call {
+            CallCmd::Transfer { from, to, balance } => sign_tx(
+                from.into(),
+                Call::Balances(BalancesCall::transfer(to.into(), balance)),
+                0,
+            )?
+            .into(),
+        };
 
-        Ok(())
+        Ok(raw_tx)
     }
 }
