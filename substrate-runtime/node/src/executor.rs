@@ -9,6 +9,8 @@ use sc_service::client::{new_in_mem, Client, ClientConfig, LocalCallExecutor};
 use sp_core::testing::TaskExecutor;
 use sp_core::traits::MissingHostFunctions;
 use sp_io::{SubstrateHostFunctions, TestExternalities};
+use sp_runtime::generic::BlockId;
+use sp_state_machine::InspectState;
 use sp_storage::Storage;
 use std::sync::Arc;
 
@@ -47,17 +49,17 @@ impl InitExecutor {
     }
 }
 
-pub struct ClientTemp<RA> {
+pub struct ClientTemp {
     client: Client<
         Backend<Block>,
         LocalCallExecutor<Backend<Block>, NativeExecutor<Executor>>,
         Block,
-        RA,
+        (),
     >,
 }
 
-impl<RA> ClientTemp<RA> {
-    pub fn new() -> Result<ClientTemp<RA>> {
+impl ClientTemp {
+    pub fn new() -> Result<ClientTemp> {
         Ok(ClientTemp {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
@@ -69,5 +71,22 @@ impl<RA> ClientTemp<RA> {
             )
             .map_err(|_| failure::err_msg("failed to create in-memory client"))?,
         })
+    }
+    pub fn call<T, F: FnOnce() -> Result<Option<T>>>(&self, f: F) -> Result<Option<T>> {
+        let mut res = Ok(None);
+        self.client
+            .state_at(&BlockId::Number(0))
+            .map_err(|_| failure::err_msg(""))?
+            .inspect_with(|| {
+                res = f();
+            });
+
+        res
+    }
+}
+
+pub trait WrapOption {
+    fn some<T>(&self, t: T) -> Option<T> {
+        Some(t)
     }
 }

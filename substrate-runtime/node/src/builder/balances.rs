@@ -1,5 +1,6 @@
 use super::{AccountId, Address, Balance, Call, SignedExtra, UncheckedExtrinsic};
 use crate::chain_spec::get_account_id_from_seed;
+use crate::executor::{ClientTemp, WrapOption};
 use crate::Result;
 use codec::{Decode, Encode};
 use pallet_balances::Call as BalancesCall;
@@ -123,16 +124,17 @@ enum CallCmd {
 }
 
 impl PalletBalancesCmd {
-    pub fn run(self) -> Result<RawExtrinsic> {
-        let raw_tx = match self.call {
-            CallCmd::Transfer { from, to, balance } => sign_tx(
-                from.into(),
-                Call::Balances(BalancesCall::transfer(to.into(), balance)),
-                0,
-            )?
-            .into(),
-        };
-
-        Ok(raw_tx)
+    pub fn run(self) -> Result<Option<RawExtrinsic>> {
+        match self.call {
+            CallCmd::Transfer { from, to, balance } => ClientTemp::new()?.call(|| {
+                sign_tx(
+                    from.into(),
+                    Call::Balances(BalancesCall::transfer(to.into(), balance)),
+                    0,
+                )
+                .map(|t| RawExtrinsic::from(t))
+                .map(Some)
+            }),
+        }
     }
 }
