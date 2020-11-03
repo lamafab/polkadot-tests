@@ -16,7 +16,7 @@
 // limitations under the License.
 
 use crate::cli::{Cli, Subcommand};
-use crate::{chain_spec, service};
+use crate::{chain_spec, service, Result};
 use node_template_runtime::Block;
 use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
@@ -46,7 +46,7 @@ impl SubstrateCli for Cli {
         2017
     }
 
-    fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
+    fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
         Ok(match id {
             "dev" => Box::new(chain_spec::development_config()?),
             path => Box::new(chain_spec::ChainSpec::from_json_file(
@@ -61,11 +61,11 @@ impl SubstrateCli for Cli {
 }
 
 /// Parse and run command line arguments
-pub fn run() -> sc_cli::Result<()> {
+pub fn run() -> Result<()> {
     let cli = Cli::from_args();
 
     match cli.subcommand {
-        Some(Subcommand::PalletBalances(cmd)) => cmd.run().map(|_| ()).unwrap(),
+        Some(Subcommand::PalletBalances(cmd)) => cmd.run().map(|extr| println!("{}", extr))?,
         _ => unimplemented!(),
         /*
         Some(Subcommand::BuildSpec(cmd)) => {

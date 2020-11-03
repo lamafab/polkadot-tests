@@ -1,4 +1,5 @@
 use super::builder::Block;
+use super::chain_spec::development_config;
 use super::service::Executor;
 use super::Result;
 use node_template_runtime::{RuntimeFunction, WASM_BINARY};
@@ -10,6 +11,7 @@ use sp_core::testing::TaskExecutor;
 use sp_core::traits::MissingHostFunctions;
 use sp_io::{SubstrateHostFunctions, TestExternalities};
 use sp_runtime::generic::BlockId;
+use sp_runtime::BuildStorage;
 use sp_state_machine::InspectState;
 use sp_storage::Storage;
 use std::sync::Arc;
@@ -63,7 +65,10 @@ impl ClientTemp {
         Ok(ClientTemp {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
-                &Storage::default(),
+                &development_config()
+                    .map_err(|_| failure::err_msg("Failed to build chain-spec"))?
+                    .build_storage()
+                    .map_err(|_| failure::err_msg("Failed to build chain-spec"))?,
                 None,
                 None,
                 Box::new(TaskExecutor::new()),
@@ -82,11 +87,5 @@ impl ClientTemp {
             });
 
         res
-    }
-}
-
-pub trait WrapOption {
-    fn some<T>(&self, t: T) -> Option<T> {
-        Some(t)
     }
 }

@@ -14,6 +14,6 @@ mod rpc;
 
 type Result<T> = std::result::Result<T, failure::Error>;
 
-fn main() -> sc_cli::Result<()> {
+fn main() -> Result<()> {
     command::run()
 }

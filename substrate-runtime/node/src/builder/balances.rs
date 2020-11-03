@@ -1,6 +1,6 @@
 use super::{AccountId, Address, Balance, Call, SignedExtra, UncheckedExtrinsic};
 use crate::chain_spec::get_account_id_from_seed;
-use crate::executor::{ClientTemp, WrapOption};
+use crate::executor::ClientTemp;
 use crate::Result;
 use codec::{Decode, Encode};
 use pallet_balances::Call as BalancesCall;
@@ -8,6 +8,7 @@ use sp_core::crypto::Pair;
 use sp_core::sr25519;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
+use std::fmt;
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -93,6 +94,12 @@ impl From<RawPrivateKey> for sr25519::Pair {
 #[derive(Debug)]
 pub struct RawExtrinsic(Vec<u8>);
 
+impl fmt::Display for RawExtrinsic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(&self.0))
+    }
+}
+
 impl From<Vec<u8>> for RawExtrinsic {
     fn from(val: Vec<u8>) -> Self {
         RawExtrinsic(val)
@@ -124,17 +131,19 @@ enum CallCmd {
 }
 
 impl PalletBalancesCmd {
-    pub fn run(self) -> Result<Option<RawExtrinsic>> {
+    pub fn run(self) -> Result<RawExtrinsic> {
         match self.call {
-            CallCmd::Transfer { from, to, balance } => ClientTemp::new()?.call(|| {
-                sign_tx(
-                    from.into(),
-                    Call::Balances(BalancesCall::transfer(to.into(), balance)),
-                    0,
-                )
-                .map(|t| RawExtrinsic::from(t))
-                .map(Some)
-            }),
+            CallCmd::Transfer { from, to, balance } => ClientTemp::new()?
+                .call(|| {
+                    sign_tx(
+                        from.into(),
+                        Call::Balances(BalancesCall::transfer(to.into(), balance)),
+                        0,
+                    )
+                    .map(|t| RawExtrinsic::from(t))
+                    .map(Some)
+                })
+                .map(|extr| extr.unwrap()),
         }
     }
 }
