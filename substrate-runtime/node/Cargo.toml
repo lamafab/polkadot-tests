@@ -23,6 +23,9 @@ jsonrpc-core = '15.0.0'
 structopt = '0.3.8'
 serde = { features = ['derive'], optional = true, version = "1.0.117" }
 serde_json = '1.0.59'
+hex = '0.4.2'
+failure = "0.1.8"
+codec = { package = "parity-scale-codec", version = "1.3.1" }
 
 # local dependencies
 node-template-runtime = { path = '../runtime', version = '2.0.0' }
@@ -30,7 +33,10 @@ node-template-runtime = { path = '../runtime', version = '2.0.0' }
 # Substrate dependencies
 frame-benchmarking = '2.0.0'
 frame-benchmarking-cli = '2.0.0'
+frame-system = "2.0.0"
+pallet-balances = '2.0.0'
 pallet-transaction-payment-rpc = '2.0.0'
+pallet-transaction-payment = "2.0.0"
 sc-basic-authorship = '0.8.0'
 sc-cli = { features = ['wasmtime'], version = '0.8.0' }
 sc-client-api = '2.0.0'
@@ -40,7 +46,7 @@ sc-executor = { features = ['wasmtime'], version = '0.8.0' }
 sc-finality-grandpa = '0.8.0'
 sc-rpc = '2.0.0'
 sc-rpc-api = '0.8.0'
-sc-service = { features = ['wasmtime'], version = '0.8.0' }
+sc-service = { features = ['wasmtime', 'test-helpers'], version = '0.8.0' }
 sc-transaction-pool = '2.0.0'
 sp-api = '2.0.0'
 sp-block-builder = '2.0.0'
@@ -53,6 +59,8 @@ sp-inherents = '2.0.0'
 sp-runtime = '2.0.0'
 sp-transaction-pool = '2.0.0'
 sp-io = "2.0.0"
+sp-storage = "2.0.0"
+sp-state-machine = "0.8.0"
 substrate-frame-rpc-system = '2.0.0'
 
 [features]
