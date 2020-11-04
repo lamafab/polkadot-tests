@@ -6,6 +6,7 @@ use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
+use sp_runtime::AccountId32;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 // The URL for the telemetry server.
@@ -13,6 +14,21 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+
+pub struct CryptoPair {
+    pair: sr25519::Pair,
+}
+
+impl CryptoPair {
+    pub fn new() -> CryptoPair {
+        CryptoPair {
+            pair: sr25519::Pair::from_seed(&rand::random::<[u8; 32]>()),
+        }
+    }
+    pub fn account_id(&self) -> AccountId {
+        self.pair.public().into()
+    }
+}
 
 /// Generate a crypto pair from seed.
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -36,7 +52,11 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
     (get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
 }
 
-pub fn development_config() -> Result<ChainSpec, String> {
+pub fn gen_chain_spec_thin() -> Result<ChainSpec, String> {
+    gen_chain_spec_with_accounts(vec![])
+}
+
+pub fn gen_chain_spec_with_accounts(endowed_accounts: Vec<AccountId>) -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
 
     Ok(ChainSpec::from_genesis(

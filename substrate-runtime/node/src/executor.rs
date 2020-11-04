@@ -1,5 +1,5 @@
 use super::builder::Block;
-use super::chain_spec::development_config;
+use super::chain_spec::gen_chain_spec_thin;
 use super::service::Executor;
 use super::Result;
 use node_template_runtime::{RuntimeFunction, WASM_BINARY};
@@ -65,7 +65,7 @@ impl ClientTemp {
         Ok(ClientTemp {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
-                &development_config()
+                &gen_chain_spec_thin()
                     .map_err(|_| failure::err_msg("Failed to build chain-spec"))?
                     .build_storage()
                     .map_err(|_| failure::err_msg("Failed to build chain-spec"))?,
