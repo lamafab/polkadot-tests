@@ -1,5 +1,5 @@
 use super::{AccountId, Address, Balance, Call, SignedExtra, UncheckedExtrinsic};
-use crate::chain_spec::get_account_id_from_seed;
+use crate::chain_spec::{get_account_id_from_seed, CryptoPair};
 use crate::executor::ClientTemp;
 use crate::Result;
 use codec::{Decode, Encode};
@@ -12,7 +12,7 @@ use std::fmt;
 use std::str::FromStr;
 use structopt::StructOpt;
 
-fn sign_tx(signer: sr25519::Pair, function: Call, nonce: u32) -> Result<UncheckedExtrinsic> {
+fn sign_tx(signer: CryptoPair, function: Call, nonce: u32) -> Result<UncheckedExtrinsic> {
     fn extra_err() -> failure::Error {
         failure::err_msg("Failed to retrieve additionally signed extra")
     }
@@ -81,13 +81,11 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-impl From<RawPrivateKey> for sr25519::Pair {
+impl From<RawPrivateKey> for CryptoPair {
     fn from(val: RawPrivateKey) -> Self {
-        sr25519::Pair::from_seed(&{
-            let mut seed = [0; 32];
-            seed.copy_from_slice(&val.0);
-            seed
-        })
+        let mut seed = [0; 32];
+        seed.copy_from_slice(&val.0);
+        seed.into()
     }
 }
 

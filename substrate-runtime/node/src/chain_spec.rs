@@ -6,8 +6,8 @@ use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::AccountId32;
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::{AccountId32, MultiSignature};
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -20,13 +20,25 @@ pub struct CryptoPair {
 }
 
 impl CryptoPair {
-    pub fn new() -> CryptoPair {
-        CryptoPair {
-            pair: sr25519::Pair::from_seed(&rand::random::<[u8; 32]>()),
-        }
+    pub fn new() -> Self {
+        Self::from(rand::random::<[u8; 32]>())
+    }
+    pub fn public(&self) -> sr25519::Public {
+        self.pair.public()
     }
     pub fn account_id(&self) -> AccountId {
         self.pair.public().into()
+    }
+    pub fn sign(&self, message: &[u8]) -> MultiSignature {
+        self.pair.sign(message).into()
+    }
+}
+
+impl From<[u8; 32]> for CryptoPair {
+    fn from(val: [u8; 32]) -> Self {
+        CryptoPair {
+            pair: sr25519::Pair::from_seed(&val),
+        }
     }
 }
 
