@@ -1,4 +1,5 @@
 mod balances;
+mod blocks;
 mod primitives;
 
 pub use balances::PalletBalancesCmd;
