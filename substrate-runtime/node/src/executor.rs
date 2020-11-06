@@ -1,5 +1,5 @@
 use super::builder::Block;
-use super::chain_spec::gen_chain_spec_thin;
+use super::chain_spec::{gen_chain_spec_thin, ChainSpec};
 use super::service::Executor;
 use super::Result;
 use node_template_runtime::{RuntimeFunction, WASM_BINARY};
@@ -66,9 +66,24 @@ impl ClientTemp {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
                 &gen_chain_spec_thin()
-                    .map_err(|_| failure::err_msg("Failed to build chain-spec"))?
+                    .map_err(|_| failure::err_msg("Failed to build temporary chain-spec"))?
                     .build_storage()
-                    .map_err(|_| failure::err_msg("Failed to build chain-spec"))?,
+                    .map_err(|_| failure::err_msg("Failed to build temporary chain-spec"))?,
+                None,
+                None,
+                Box::new(TaskExecutor::new()),
+                ClientConfig::default(),
+            )
+            .map_err(|_| failure::err_msg("failed to create in-memory client"))?,
+        })
+    }
+    pub fn new_with_genesis(chain_spec: ChainSpec) -> Result<ClientTemp> {
+        Ok(ClientTemp {
+            client: new_in_mem::<_, Block, _, _>(
+                NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
+                &chain_spec
+                    .build_storage()
+                    .map_err(|_| failure::err_msg("Failed to build provided chain-spec"))?,
                 None,
                 None,
                 Box::new(TaskExecutor::new()),
