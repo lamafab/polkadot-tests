@@ -132,7 +132,7 @@ impl PalletBalancesCmd {
     pub fn run(self) -> Result<RawExtrinsic> {
         match self.call {
             CallCmd::Transfer { from, to, balance } => ClientTemp::new()?
-                .call(|| {
+                .exec_context(|| {
                     sign_tx(
                         from.into(),
                         Call::Balances(BalancesCall::transfer(to.into(), balance)),

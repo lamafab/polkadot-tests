@@ -2,11 +2,12 @@ use super::builder::Block;
 use super::chain_spec::{gen_chain_spec_thin, ChainSpec};
 use super::service::Executor;
 use super::Result;
-use node_template_runtime::{RuntimeFunction, WASM_BINARY};
+use node_template_runtime::{RuntimeApi, RuntimeApiImpl, RuntimeFunction, WASM_BINARY};
 use sc_client_api::in_mem::Backend;
 use sc_executor::sp_wasm_interface::HostFunctions;
 use sc_executor::{CallInWasm, NativeExecutor, WasmExecutionMethod, WasmExecutor};
 use sc_service::client::{new_in_mem, Client, ClientConfig, LocalCallExecutor};
+use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_core::testing::TaskExecutor;
 use sp_core::traits::MissingHostFunctions;
 use sp_io::{SubstrateHostFunctions, TestExternalities};
@@ -51,12 +52,19 @@ impl InitExecutor {
     }
 }
 
+type ClientTempDef = Client<
+    Backend<Block>,
+    LocalCallExecutor<Backend<Block>, NativeExecutor<Executor>>,
+    Block,
+    RuntimeApi,
+>;
+
 pub struct ClientTemp {
     client: Client<
         Backend<Block>,
         LocalCallExecutor<Backend<Block>, NativeExecutor<Executor>>,
         Block,
-        (),
+        RuntimeApi,
     >,
 }
 
@@ -92,7 +100,7 @@ impl ClientTemp {
             .map_err(|_| failure::err_msg("failed to create in-memory client"))?,
         })
     }
-    pub fn call<T, F: FnOnce() -> Result<Option<T>>>(&self, f: F) -> Result<Option<T>> {
+    pub fn exec_context<T, F: FnOnce() -> Result<Option<T>>>(&self, f: F) -> Result<Option<T>> {
         let mut res = Ok(None);
         self.client
             .state_at(&BlockId::Number(0))
@@ -102,5 +110,8 @@ impl ClientTemp {
             });
 
         res
+    }
+    pub fn runtime_api<'a>(&'a self) -> ApiRef<'a, RuntimeApiImpl<Block, ClientTempDef>> {
+        self.client.runtime_api()
     }
 }
