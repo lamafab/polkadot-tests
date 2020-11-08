@@ -60,12 +60,7 @@ type ClientTempDef = Client<
 >;
 
 pub struct ClientTemp {
-    client: Client<
-        Backend<Block>,
-        LocalCallExecutor<Backend<Block>, NativeExecutor<Executor>>,
-        Block,
-        RuntimeApi,
-    >,
+    client: ClientTempDef,
 }
 
 impl ClientTemp {

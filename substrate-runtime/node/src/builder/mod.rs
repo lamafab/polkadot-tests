@@ -5,7 +5,7 @@ mod primitives;
 pub use balances::PalletBalancesCmd;
 // `AccountId` -> `sp_runtime::AccountId32`
 pub use node_template_runtime::{
-    AccountId, Address, Balance, Block, BlockNumber, Call, Header, Signature, SignedExtra,
+    AccountId, Address, Balance, Block, BlockId, BlockNumber, Call, Header, Signature, SignedExtra,
     UncheckedExtrinsic,
 };
 

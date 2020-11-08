@@ -1,11 +1,33 @@
 use super::{Block, BlockNumber, Header, UncheckedExtrinsic};
+use crate::Result;
 use codec::Decode;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
 use sp_runtime::traits::BlakeTwo256;
 use std::convert::{TryFrom, TryInto};
+use structopt::StructOpt;
 
-#[derive(Serialize, Deserialize)]
+macro_rules! from_str {
+    ($($name:ident)*) => {
+        $(
+            impl std::str::FromStr for $name {
+                type Err = failure::Error;
+
+                fn from_str(val: &str) -> Result<Self> {
+                    Ok($name(val.to_string()))
+                }
+            }
+        )*
+    };
+}
+
+from_str!(
+    TxtHash
+    TxtBlockNumber
+    TxtExtrinsic
+);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtTestLayout<T> {
     pub name: String,
@@ -16,79 +38,91 @@ pub struct TxtTestLayout<T> {
     pub data: T,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxtHash(String);
 
 impl TryFrom<TxtHash> for H256 {
     type Error = failure::Error;
 
-    fn try_from(val: TxtHash) -> Result<Self, Self::Error> {
+    fn try_from(val: TxtHash) -> Result<Self> {
         Ok(H256::from_slice(&hex::decode(&val.0.replace("0x", ""))?))
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxtBlockNumber(String);
 
 impl TryFrom<TxtBlockNumber> for BlockNumber {
     type Error = failure::Error;
 
-    fn try_from(val: TxtBlockNumber) -> Result<Self, Self::Error> {
+    fn try_from(val: TxtBlockNumber) -> Result<Self> {
         Ok(BlockNumber::from_str_radix(&val.0.replace("0x", ""), 16)?)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtExtrinsic(String);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtBlock {
+    #[structopt(skip)]
     pub description: String,
+    #[structopt(flatten)]
     pub header: TxtHeader,
+    #[structopt(short, long)]
     pub extrinsics: Vec<TxtExtrinsic>,
+    #[structopt(short, long)]
     pub post_state: TxtHash,
 }
 
+/*
 impl TryFrom<TxtBlock> for Block {
     type Error = failure::Error;
 
-    fn try_from(val: TxtBlock) -> Result<Self, Self::Error> {
+    fn try_from(val: TxtBlock) -> Result<Self> {
         Ok(Block {
             header: val.header.try_into()?,
             extrinsics: val
                 .extrinsics
                 .iter()
-                .map(|e| hex::decode(e.0.replace("0x", "")))
-                .collect::<Result<Vec<Vec<u8>>, _>>()?
+                .map(|e| hex::decode(e.0.replace("0x", "")).map_err(|err| failure::Error::from(err)))
+                .collect::<Result<Vec<Vec<u8>>, failure::Error>>()?
                 .iter_mut()
-                .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()))
-                .collect::<Result<Vec<UncheckedExtrinsic>, _>>()?,
+                .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()).map_err(|err| failure::Error::from(err)))
+                .collect::<Result<Vec<UncheckedExtrinsic>, failure::Error>>()?,
         })
     }
 }
+*/
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtHeader {
+    #[structopt(short, long)]
     pub parent_hash: TxtHash,
+    #[structopt(short, long)]
     pub number: TxtBlockNumber,
+    #[structopt(short, long)]
     pub state_root: TxtHash,
+    #[structopt(short, long)]
     pub extrinsics_root: TxtHash,
+    #[structopt(flatten)]
     pub digest: TxtDigest,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtDigest {
     pub logs: Vec<String>,
 }
 
+/*
 impl TryFrom<TxtHeader> for Header {
     type Error = failure::Error;
 
-    fn try_from(val: TxtHeader) -> Result<Self, Self::Error> {
+    fn try_from(val: TxtHeader) -> Result<Self> {
         Ok(Header {
             parent_hash: val.parent_hash.try_into()?,
             number: val.number.try_into()?,
@@ -108,6 +142,7 @@ impl TryFrom<TxtHeader> for Header {
         })
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {
