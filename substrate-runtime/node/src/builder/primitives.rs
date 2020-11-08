@@ -1,16 +1,18 @@
-use super::{Block, BlockNumber, Header, UncheckedExtrinsic};
+use super::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
 use crate::Result;
 use codec::Decode;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
 use sp_runtime::traits::BlakeTwo256;
 use std::convert::{TryFrom, TryInto};
+use std::mem;
+use std::str::FromStr;
 use structopt::StructOpt;
 
 macro_rules! from_str {
     ($($name:ident)*) => {
         $(
-            impl std::str::FromStr for $name {
+            impl FromStr for $name {
                 type Err = failure::Error;
 
                 fn from_str(val: &str) -> Result<Self> {
@@ -26,6 +28,17 @@ from_str!(
     TxtBlockNumber
     TxtExtrinsic
 );
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RawBlock(Vec<u8>);
+
+impl FromStr for RawBlock {
+    type Err = failure::Error;
+
+    fn from_str(mut val: &str) -> Result<Self> {
+        Ok(RawBlock(hex::decode(&mut val.as_bytes())?))
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -83,6 +96,21 @@ pub struct TxtBlock {
     pub header: TxtHeader,
     #[structopt(short, long)]
     pub extrinsics: Vec<TxtExtrinsic>,
+}
+
+impl TxtBlock {
+    // Convert relevant fields into runtime native types.
+    pub fn prep(mut self) -> Result<(BlockId, Header, Vec<UncheckedExtrinsic>)> {
+        // Convert into runtime types.
+        let at = BlockId::Hash(mem::take(&mut self.header.parent_hash).try_into()?);
+        let header = mem::take(&mut self.header).try_into()?;
+        let extrinsics = mem::take(&mut self.extrinsics)
+            .into_iter()
+            .map(|e| e.try_into())
+            .collect::<Result<Vec<UncheckedExtrinsic>>>()?;
+
+        Ok((at, header, extrinsics))
+    }
 }
 
 impl TryFrom<TxtBlock> for Block {
