@@ -38,7 +38,7 @@ pub struct TxtTestLayout<T> {
     pub data: T,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TxtHash(String);
 
 impl TryFrom<TxtHash> for H256 {
@@ -49,7 +49,7 @@ impl TryFrom<TxtHash> for H256 {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TxtBlockNumber(String);
 
 impl TryFrom<TxtBlockNumber> for BlockNumber {
@@ -60,21 +60,29 @@ impl TryFrom<TxtBlockNumber> for BlockNumber {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtExtrinsic(String);
 
-#[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
+impl TryFrom<TxtExtrinsic> for UncheckedExtrinsic {
+    type Error = failure::Error;
+
+    fn try_from(mut val: TxtExtrinsic) -> Result<Self> {
+        hex::decode(val.0.replace("0x", ""))
+            .map_err(|err| failure::Error::from(err))
+            .and_then(|mut bytes| {
+                UncheckedExtrinsic::decode(&mut bytes.as_slice()).map_err(|err| err.into())
+            })
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtBlock {
-    #[structopt(skip)]
-    pub description: String,
     #[structopt(flatten)]
     pub header: TxtHeader,
     #[structopt(short, long)]
     pub extrinsics: Vec<TxtExtrinsic>,
-    #[structopt(short, long)]
-    pub post_state: TxtHash,
 }
 
 impl TryFrom<TxtBlock> for Block {
@@ -85,17 +93,14 @@ impl TryFrom<TxtBlock> for Block {
             header: val.header.try_into()?,
             extrinsics: val
                 .extrinsics
-                .iter()
-                .map(|e| hex::decode(e.0.replace("0x", "")).map_err(|err| err.into()))
-                .collect::<Result<Vec<Vec<u8>>>>()?
-                .iter_mut()
-                .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()).map_err(|err| err.into()))
+                .into_iter()
+                .map(|e| e.try_into())
                 .collect::<Result<Vec<UncheckedExtrinsic>>>()?,
         })
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtHeader {
     #[structopt(short, long)]
@@ -110,7 +115,7 @@ pub struct TxtHeader {
     pub digest: TxtDigest,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtDigest {
     pub logs: Vec<String>,
