@@ -41,23 +41,23 @@ impl BlockCmd {
                 rt.initialize_block(&at, &header)
                     .map_err(|_| failure::err_msg(""))?;
 
-                for e in extrinsics {
+                for extr in extrinsics {
                     let apply_result = rt
-                        .apply_extrinsic(&at, e)
+                        .apply_extrinsic(&at, extr)
                         .map_err(|_| failure::err_msg(""))?;
 
                     if let Err(validity) = apply_result {
                         if validity.exhausted_resources() {
                             break;
                         } else {
-                            return Err(failure::err_msg("Apply extrinsic invalid transaction"));
+                            return Err(failure::err_msg("Invalid transaction"));
                         }
                     } else {
                         return Err(failure::err_msg("Apply extrinsic dispatch error"));
                     }
                 }
 
-                rt.finalize_block(&at).map_err(|_| failure::err_msg(""))?;
+                rt.finalize_block(&at).map_err(|_| failure::err_msg("Failed to finalize block"))?;
             }
             CallCmd::ExecuteBlocks { blocks } => {
                 // Create the block by calling the runtime APIs.
