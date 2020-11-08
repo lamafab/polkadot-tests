@@ -40,6 +40,14 @@ impl FromStr for RawBlock {
     }
 }
 
+impl TryFrom<RawBlock> for Block {
+    type Error = failure::Error;
+
+    fn try_from(mut val: RawBlock) -> Result<Self> {
+        Block::decode(&mut val.0.as_slice()).map_err(|err| err.into())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TxtTestLayout<T> {

@@ -1,5 +1,5 @@
 use super::primitives::{RawBlock, TxtBlock, TxtBlockNumber, TxtHeader};
-use super::{BlockId, BlockNumber, Header, UncheckedExtrinsic};
+use super::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
 use crate::executor::ClientTemp;
 use crate::Result;
 use sp_api::Core;
@@ -41,18 +41,32 @@ impl BlockCmd {
                 rt.initialize_block(&at, &header)
                     .map_err(|_| failure::err_msg(""))?;
 
-                extrinsics
-                    .into_iter()
-                    .map(|e| {
-                        rt.apply_extrinsic(&at, e)
-                            .map(|_| ())
-                            .map_err(|_| failure::err_msg(""))
-                    })
-                    .collect::<Result<Vec<()>>>()?;
+                for e in extrinsics {
+                    let _ = rt
+                        .apply_extrinsic(&at, e)
+                        .map_err(|_| failure::err_msg(""))?;
+                }
 
                 rt.finalize_block(&at).map_err(|_| failure::err_msg(""))?;
             }
-            CallCmd::ExecuteBlocks { blocks } => {}
+            CallCmd::ExecuteBlocks { blocks } => {
+                // Create the block by calling the runtime APIs.
+                let client = ClientTemp::new()?;
+                let rt = client.runtime_api();
+
+                // Convert into runtime native type.
+                let blocks = blocks
+                    .into_iter()
+                    .map(|raw| Block::try_from(raw))
+                    .collect::<Result<Vec<Block>>>()?;
+
+                for mut block in blocks {
+                    let at = BlockId::Hash(block.header.parent_hash.clone().try_into()?);
+
+                    rt.execute_block(&at, block.try_into()?)
+                        .map_err(|_| failure::err_msg(""))?;
+                }
+            }
         }
 
         Ok(())
