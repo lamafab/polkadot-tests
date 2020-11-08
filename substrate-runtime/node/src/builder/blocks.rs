@@ -57,7 +57,8 @@ impl BlockCmd {
                     }
                 }
 
-                rt.finalize_block(&at).map_err(|_| failure::err_msg("Failed to finalize block"))?;
+                rt.finalize_block(&at)
+                    .map_err(|_| failure::err_msg("Failed to finalize block"))?;
             }
             CallCmd::ExecuteBlocks { blocks } => {
                 // Create the block by calling the runtime APIs.
