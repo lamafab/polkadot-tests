@@ -42,9 +42,19 @@ impl BlockCmd {
                     .map_err(|_| failure::err_msg(""))?;
 
                 for e in extrinsics {
-                    let _ = rt
+                    let apply_result = rt
                         .apply_extrinsic(&at, e)
                         .map_err(|_| failure::err_msg(""))?;
+
+                    if let Err(validity) = apply_result {
+                        if validity.exhausted_resources() {
+                            break;
+                        } else {
+                            return Err(failure::err_msg("Apply extrinsic invalid transaction"));
+                        }
+                    } else {
+                        return Err(failure::err_msg("Apply extrinsic dispatch error"));
+                    }
                 }
 
                 rt.finalize_block(&at).map_err(|_| failure::err_msg(""))?;
