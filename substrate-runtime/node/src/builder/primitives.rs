@@ -77,7 +77,6 @@ pub struct TxtBlock {
     pub post_state: TxtHash,
 }
 
-/*
 impl TryFrom<TxtBlock> for Block {
     type Error = failure::Error;
 
@@ -87,15 +86,14 @@ impl TryFrom<TxtBlock> for Block {
             extrinsics: val
                 .extrinsics
                 .iter()
-                .map(|e| hex::decode(e.0.replace("0x", "")).map_err(|err| failure::Error::from(err)))
-                .collect::<Result<Vec<Vec<u8>>, failure::Error>>()?
+                .map(|e| hex::decode(e.0.replace("0x", "")).map_err(|err| err.into()))
+                .collect::<Result<Vec<Vec<u8>>>>()?
                 .iter_mut()
-                .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()).map_err(|err| failure::Error::from(err)))
-                .collect::<Result<Vec<UncheckedExtrinsic>, failure::Error>>()?,
+                .map(|e| UncheckedExtrinsic::decode(&mut e.as_slice()).map_err(|err| err.into()))
+                .collect::<Result<Vec<UncheckedExtrinsic>>>()?,
         })
     }
 }
-*/
 
 #[derive(Debug, Clone, Serialize, Deserialize, StructOpt)]
 #[serde(rename_all = "camelCase")]
@@ -118,7 +116,6 @@ pub struct TxtDigest {
     pub logs: Vec<String>,
 }
 
-/*
 impl TryFrom<TxtHeader> for Header {
     type Error = failure::Error;
 
@@ -133,16 +130,15 @@ impl TryFrom<TxtHeader> for Header {
                     .digest
                     .logs
                     .iter()
-                    .map(|d| hex::decode(d.replace("0x", "")))
-                    .collect::<Result<Vec<Vec<u8>>, _>>()?
+                    .map(|d| hex::decode(d.replace("0x", "")).map_err(|err| err.into()))
+                    .collect::<Result<Vec<Vec<u8>>>>()?
                     .iter_mut()
-                    .map(|d| DigestItem::decode(&mut d.as_slice()))
-                    .collect::<Result<Vec<DigestItem<H256>>, _>>()?,
+                    .map(|d| DigestItem::decode(&mut d.as_slice()).map_err(|err| err.into()))
+                    .collect::<Result<Vec<DigestItem<H256>>>>()?,
             },
         })
     }
 }
-*/
 
 #[cfg(test)]
 mod tests {
