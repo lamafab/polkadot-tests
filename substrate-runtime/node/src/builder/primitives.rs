@@ -3,7 +3,6 @@ use crate::Result;
 use codec::Decode;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
-use sp_runtime::traits::BlakeTwo256;
 use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::str::FromStr;
@@ -35,7 +34,7 @@ pub struct RawBlock(Vec<u8>);
 impl FromStr for RawBlock {
     type Err = failure::Error;
 
-    fn from_str(mut val: &str) -> Result<Self> {
+    fn from_str(val: &str) -> Result<Self> {
         Ok(RawBlock(hex::decode(&mut val.as_bytes())?))
     }
 }
@@ -43,7 +42,7 @@ impl FromStr for RawBlock {
 impl TryFrom<RawBlock> for Block {
     type Error = failure::Error;
 
-    fn try_from(mut val: RawBlock) -> Result<Self> {
+    fn try_from(val: RawBlock) -> Result<Self> {
         Block::decode(&mut val.0.as_slice()).map_err(|err| err.into())
     }
 }
@@ -88,10 +87,10 @@ pub struct TxtExtrinsic(String);
 impl TryFrom<TxtExtrinsic> for UncheckedExtrinsic {
     type Error = failure::Error;
 
-    fn try_from(mut val: TxtExtrinsic) -> Result<Self> {
+    fn try_from(val: TxtExtrinsic) -> Result<Self> {
         hex::decode(val.0.replace("0x", ""))
             .map_err(|err| failure::Error::from(err))
-            .and_then(|mut bytes| {
+            .and_then(|bytes| {
                 UncheckedExtrinsic::decode(&mut bytes.as_slice()).map_err(|err| err.into())
             })
     }

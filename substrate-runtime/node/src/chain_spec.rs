@@ -7,7 +7,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::{MultiSignature};
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -68,7 +68,7 @@ pub fn gen_chain_spec_thin() -> Result<ChainSpec, String> {
     gen_chain_spec_with_accounts(vec![])
 }
 
-pub fn gen_chain_spec_with_accounts(endowed_accounts: Vec<AccountId>) -> Result<ChainSpec, String> {
+pub fn gen_chain_spec_with_accounts(_endowed_accounts: Vec<AccountId>) -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
 
     Ok(ChainSpec::from_genesis(

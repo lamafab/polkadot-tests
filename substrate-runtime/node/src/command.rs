@@ -16,10 +16,8 @@
 // limitations under the License.
 
 use crate::cli::{Cli, Subcommand};
-use crate::{chain_spec, service, Result};
-use node_template_runtime::Block;
-use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
-use sc_service::PartialComponents;
+use crate::{chain_spec, Result};
+use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {

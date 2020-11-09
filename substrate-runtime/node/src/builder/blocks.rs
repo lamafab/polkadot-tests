@@ -1,12 +1,10 @@
-use super::primitives::{RawBlock, TxtBlock, TxtBlockNumber, TxtHeader};
-use super::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
+use super::primitives::{RawBlock, TxtBlock};
+use super::{Block, BlockId};
 use crate::executor::ClientTemp;
 use crate::Result;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
 use std::convert::{TryFrom, TryInto};
-use std::mem;
-use std::str::FromStr;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -30,7 +28,7 @@ enum CallCmd {
 impl BlockCmd {
     pub fn run(self) -> Result<()> {
         match self.call {
-            CallCmd::BuildBlock { mut spec_block } => {
+            CallCmd::BuildBlock { spec_block } => {
                 // Convert into runtime types.
                 let (at, header, extrinsics) = spec_block.prep()?;
 
@@ -71,7 +69,7 @@ impl BlockCmd {
                     .map(|raw| Block::try_from(raw))
                     .collect::<Result<Vec<Block>>>()?;
 
-                for mut block in blocks {
+                for block in blocks {
                     let at = BlockId::Hash(block.header.parent_hash.clone().try_into()?);
 
                     rt.execute_block(&at, block.try_into()?)
