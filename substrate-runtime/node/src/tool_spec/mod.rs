@@ -46,6 +46,7 @@ struct Vars {
 #[serde(untagged)]
 enum VarsType {
     Map(HashMap<VariableName, serde_yaml::Value>),
+    ListMap(Vec<HashMap<VariableName, serde_yaml::Value>>),
     List(Vec<serde_yaml::Value>),
 }
 
@@ -82,6 +83,30 @@ enum TaskType {
     PalletBalances,
     #[serde(rename = "execute")]
     Execute,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize)]
+enum ValueType {
+    Variable(String),
+    LoopVariable(String),
+    Value(String),
+}
+
+impl From<String> for ValueType {
+    fn from(val: String) -> Self {
+        if val.contains("{{") && val.contains("}}") {
+            let val = val.replace("{{", "").replace("}}", "");
+            let trimmed = val.trim();
+
+            if trimmed.starts_with("item.") {
+                ValueType::LoopVariable(trimmed.replace("item.", "").to_string())
+            } else {
+                ValueType::Variable(trimmed.to_string())
+            }
+        } else {
+            ValueType::Value(val)
+        }
+    }
 }
 
 struct VarPool {
