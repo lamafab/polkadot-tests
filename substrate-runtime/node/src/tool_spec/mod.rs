@@ -42,9 +42,12 @@ struct Vars {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 enum VarsType {
-    Map(HashMap<String, serde_yaml::Value>),
+    Map(HashMap<VariableName, serde_yaml::Value>),
     List(Vec<serde_yaml::Value>),
 }
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct VariableName(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Task {
