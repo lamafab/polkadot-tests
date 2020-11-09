@@ -33,17 +33,24 @@ enum YamlItem {
     Task(Task),
     Vars(Vars),
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Vars {
-    #[serde(flatten)]
-    vars: HashMap<String, String>,
+    vars: VarsType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum VarsType {
+    Map(HashMap<String, serde_yaml::Value>),
+    List(Vec<serde_yaml::Value>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Task {
     name: String,
     #[serde(flatten)]
-    properties: HashMap<KeyType, ValueType>,
+    properties: HashMap<KeyType, serde_yaml::Value>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -69,13 +76,6 @@ enum TaskType {
     PalletBalances,
     #[serde(rename = "execute")]
     Execute,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(untagged)]
-enum ValueType {
-    String(String),
-    Custom(serde_yaml::Value),
 }
 
 struct VarPool {
