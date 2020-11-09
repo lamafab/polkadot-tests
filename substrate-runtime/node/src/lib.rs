@@ -1,11 +1,14 @@
 #[macro_use]
 extern crate serde;
 
-pub mod builder;
-pub mod chain_spec;
-pub mod executor;
-pub mod rpc;
-pub mod service;
-pub mod tool_spec;
+mod builder;
+mod chain_spec;
+mod executor;
+mod tool_spec;
+mod primitives;
+mod command;
+mod cli;
 
-type Result<T> = std::result::Result<T, failure::Error>;
+pub use command::run;
+
+pub type Result<T> = std::result::Result<T, failure::Error>;

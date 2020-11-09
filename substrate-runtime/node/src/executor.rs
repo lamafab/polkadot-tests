@@ -1,7 +1,6 @@
-use super::builder::Block;
 use super::chain_spec::{gen_chain_spec_thin, ChainSpec};
-use super::service::Executor;
 use super::Result;
+use crate::primitives::runtime::Block;
 use node_template_runtime::{RuntimeApi, RuntimeApiImpl, RuntimeFunction, WASM_BINARY};
 use sc_client_api::in_mem::Backend;
 use sc_executor::{CallInWasm, NativeExecutor, WasmExecutionMethod, WasmExecutor};
@@ -11,6 +10,15 @@ use sp_core::testing::TaskExecutor;
 use sp_runtime::generic::BlockId;
 use sp_runtime::BuildStorage;
 use sp_state_machine::InspectState;
+use sc_executor::native_executor_instance;
+
+// Native executor instance.
+native_executor_instance!(
+    pub Executor,
+    node_template_runtime::api::dispatch,
+    node_template_runtime::native_version,
+    frame_benchmarking::benchmarking::HostFunctions,
+);
 
 type ClientTempDef = Client<
     Backend<Block>,

@@ -9,8 +9,13 @@ name = 'node-template'
 repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
 version = '2.0.0'
 
+[lib]
+name = 'node_template'
+path = 'src/lib.rs'
+
 [[bin]]
 name = 'node-template'
+path = 'src/bin/main.rs'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']

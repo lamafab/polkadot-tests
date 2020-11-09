@@ -20,6 +20,9 @@ impl ToolSpec {
             task_list: task_list,
         })
     }
+    pub fn run(self) {
+        
+    }
 }
 
 #[test]

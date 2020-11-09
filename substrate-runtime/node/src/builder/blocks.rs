@@ -1,5 +1,5 @@
-use super::primitives::{RawBlock, TxtBlock};
-use super::{Block, BlockId};
+use crate::primitives::{RawBlock, TxtBlock};
+use crate::primitives::runtime::{Block, BlockId};
 use crate::executor::ClientTemp;
 use crate::Result;
 use sp_api::Core;

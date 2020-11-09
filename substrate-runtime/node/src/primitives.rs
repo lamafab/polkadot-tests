@@ -1,4 +1,3 @@
-use super::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
 use crate::Result;
 use codec::Decode;
 use sp_core::H256;
@@ -7,6 +6,15 @@ use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::str::FromStr;
 use structopt::StructOpt;
+use runtime::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
+
+pub mod runtime {
+    // `AccountId` -> `sp_runtime::AccountId32`
+    pub use node_template_runtime::{
+        AccountId, Address, Balance, Block, BlockId, BlockNumber, Call, Header, Signature, SignedExtra,
+        UncheckedExtrinsic,
+    };
+}
 
 macro_rules! from_str {
     ($($name:ident)*) => {

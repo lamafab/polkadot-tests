@@ -1,19 +1,14 @@
 use super::Result;
 use crate::chain_spec::CryptoPair;
+use crate::primitives::runtime::{UncheckedExtrinsic, SignedExtra, Call};
 use codec::Encode;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 
 mod balances;
 mod blocks;
-mod primitives;
 
 pub use balances::PalletBalancesCmd;
-// `AccountId` -> `sp_runtime::AccountId32`
-pub use node_template_runtime::{
-    AccountId, Address, Balance, Block, BlockId, BlockNumber, Call, Header, Signature, SignedExtra,
-    UncheckedExtrinsic,
-};
 
 fn create_tx(signer: CryptoPair, function: Call, nonce: u32) -> Result<UncheckedExtrinsic> {
     fn extra_err() -> failure::Error {
