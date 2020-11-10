@@ -3,6 +3,7 @@ use super::Result;
 use crate::primitives::runtime::Block;
 use node_template_runtime::{RuntimeApi, RuntimeApiImpl, RuntimeFunction, WASM_BINARY};
 use sc_client_api::in_mem::Backend;
+use sc_executor::native_executor_instance;
 use sc_executor::{CallInWasm, NativeExecutor, WasmExecutionMethod, WasmExecutor};
 use sc_service::client::{new_in_mem, Client, ClientConfig, LocalCallExecutor};
 use sp_api::{ApiRef, ProvideRuntimeApi};
@@ -10,7 +11,6 @@ use sp_core::testing::TaskExecutor;
 use sp_runtime::generic::BlockId;
 use sp_runtime::BuildStorage;
 use sp_state_machine::InspectState;
-use sc_executor::native_executor_instance;
 
 // Native executor instance.
 native_executor_instance!(

@@ -1,6 +1,6 @@
 use super::Result;
 use crate::chain_spec::CryptoPair;
-use crate::primitives::runtime::{UncheckedExtrinsic, SignedExtra, Call};
+use crate::primitives::runtime::{Call, SignedExtra, UncheckedExtrinsic};
 use codec::Encode;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;

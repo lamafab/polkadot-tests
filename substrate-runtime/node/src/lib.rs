@@ -3,11 +3,11 @@ extern crate serde;
 
 mod builder;
 mod chain_spec;
-mod executor;
-mod tool_spec;
-mod primitives;
-mod command;
 mod cli;
+mod command;
+mod executor;
+mod primitives;
+mod tool_spec;
 
 pub use command::run;
 

@@ -1,6 +1,6 @@
-use crate::primitives::{RawBlock, TxtBlock};
-use crate::primitives::runtime::{Block, BlockId};
 use crate::executor::ClientTemp;
+use crate::primitives::runtime::{Block, BlockId};
+use crate::primitives::{RawBlock, TxtBlock};
 use crate::Result;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
