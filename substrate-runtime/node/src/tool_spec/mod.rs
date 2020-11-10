@@ -61,9 +61,7 @@ fn task_parser(properties: HashMap<KeyType, ValType>) -> Result<()> {
 
     let task = task.ok_or(failure::err_msg("Not task specified"));
 
-    for (_, val) in &properties {
-
-    }
+    for (_, val) in &properties {}
 
     /*
     match task_ty {
@@ -88,36 +86,67 @@ impl<'a> PrimitiveConverter<'a> {
             local_var_pool: local,
         }
     }
-    fn process_properties(&self, properties: &mut HashMap<String, ValType>) {
+    fn process_properties(&self, properties: &mut HashMap<String, ValType>) -> Result<()> {
         for (_, val) in properties {
-            self.process_value_ty(val);
+            self.process_value_ty(val)?;
         }
+
+        Ok(())
     }
-    fn process_value_ty(&self, val_ty: &mut ValType) {
+    fn process_value_ty(&self, val_ty: &mut ValType) -> Result<()> {
         match val_ty {
             ValType::List(v) => unimplemented!(),
-            ValType::Map(map) => self.process_map(map),
-            ValType::SingleValue(v) => {},
+            ValType::Map(map) => {
+                for (_, v) in map {
+                    self.process_value_ty(v)?;
+                }
+            }
+            ValType::SingleValue(val) => self.process_yaml_value(val)?,
             ValType::Variable(name) => {
                 if let Some(v) = self.local_var_pool.get(name) {
                     *val_ty = ValType::SingleValue(v.clone())
                 } else if let Some(v) = self.global_var_pool.get(name) {
                     *val_ty = ValType::SingleValue(v.clone())
                 } else {
-                    // TODO
-                    panic!();
+                    return Err(failure::err_msg(""))
                 }
-            },
+            }
             ValType::LoopVariable(v) => unimplemented!(),
         }
-    }
-    fn process_map(&self, map: &mut HashMap<String, ValType>) {
-        for (_, val_ty) in map {
-            self.process_value_ty(val_ty)
-        }
-    }
-    fn process_yaml_value(&self, val: &mut serde_yaml::Value) {
 
+        Ok(())
+    }
+    fn process_yaml_value(&self, value: &mut serde_yaml::Value) -> Result<()> {
+        if let Some(val) = value.as_str() {
+            if val.contains("{{") && val.contains("}}") {
+                let val = val.replace("{{", "").replace("}}", "");
+                let trimmed = val.trim();
+
+                if trimmed.starts_with("item.") {
+                    //ValueType::LoopVariable(trimmed.replace("item.", "").to_string())
+                    unimplemented!()
+                } else {
+                    let var_name = VariableName(trimmed.to_string());
+                    if let Some(var) = self.local_var_pool.get(&var_name) {
+                        *value = var.clone();
+                    } else if let Some(var) = self.global_var_pool.get(&var_name) {
+                        *value = var.clone();
+                    } else {
+                        return Err(failure::err_msg(format!("Variable \"{}\" not found", var_name.0)))
+                    }
+                }
+            }
+        } else if let Some(seq) = value.as_sequence_mut() {
+            for val in seq {
+                self.process_yaml_value(val)?;
+            }
+        } else if let Some(map) = value.as_mapping_mut() {
+            for (_, val) in map {
+                self.process_yaml_value(val)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
