@@ -1,6 +1,7 @@
 use crate::Result;
 use std::collections::HashMap;
 use std::fs;
+use std::mem::drop;
 
 mod block;
 
@@ -12,16 +13,42 @@ pub struct ToolSpec {
 impl ToolSpec {
     pub fn new_from_file(path: &str) -> Result<Self> {
         let yaml_file = fs::read_to_string(path)?;
-        let yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(&yaml_file)?;
+        let mut yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(&yaml_file)?;
 
         let mut var_pool = VarPool::new();
         let mut task_list = TaskList::new();
 
-        for item in yaml_blocks {
+        let mut global_var_pool = VarPool::new();
+        let mut global_vars = None;
+        // A local variable pool is not relevant in this context, since we're looking for global variables.
+        let converter = PrimitiveConverter::new(&global_var_pool, &global_var_pool, 0);
+
+        // Process global variables first.
+        let mut first_vars = false;
+        for mut item in yaml_blocks {
             match item {
-                YamlItem::Task(task) => {}
-                YamlItem::Vars(vars) => {}
+                YamlItem::Vars(mut vars) => {
+                    if !first_vars {
+                        for (_, var) in &mut vars.vars.0 {
+                            converter.process_yaml_value(var)?;
+                        }
+
+                        global_vars = Some(vars.vars);
+                        first_vars = true;
+                    } else {
+                        return Err(failure::err_msg(
+                            "Only one global variable entry block allowed",
+                        ));
+                    }
+                }
+                _ => {}
             }
+        }
+
+        drop(converter);
+
+        if let Some(vars) = global_vars {
+            global_var_pool.insert(vars);
         }
 
         Ok(ToolSpec {
@@ -37,12 +64,15 @@ struct TaskOutcome<T> {
     out: Box<T>,
 }
 
-fn task_parser(properties: HashMap<KeyType, ValType>) -> Result<()> {
+fn task_parser(properties: HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
     let mut task = None;
     let mut local_var_pool = VarPool::new();
-    let mut register = false;
 
-    for (key, _) in &properties {
+    let mut register = false;
+    let mut first_loop = false;
+    let mut first_vars = false;
+
+    for (key, val) in &properties {
         match key {
             KeyType::TaskType(task_ty) => {
                 if task.is_none() {
@@ -52,9 +82,25 @@ fn task_parser(properties: HashMap<KeyType, ValType>) -> Result<()> {
                 }
             }
             KeyType::Keyword(keyword) => match keyword {
-                Keyword::Register => unimplemented!(),
-                Keyword::Loop => register = true,
-                Keyword::Vars => unimplemented!(),
+                Keyword::Register => register = true,
+                Keyword::Loop => {
+                    if !first_loop {
+                        first_loop = true;
+                        local_var_pool.insert(serde_yaml::from_value(val.clone())?);
+                    } else {
+                        return Err(failure::err_msg("Only one loop entry per task allowed"));
+                    }
+                }
+                Keyword::Vars => {
+                    if !first_vars {
+                        first_vars = true;
+                        local_var_pool.insert(serde_yaml::from_value(val.clone())?);
+                    } else {
+                        return Err(failure::err_msg(
+                            "Only one variable entry per task allowed ",
+                        ));
+                    }
+                }
             },
         }
     }
@@ -97,32 +143,26 @@ impl<'a> PrimitiveConverter<'a> {
     }
     fn process_value_ty(&self, val_ty: &mut ValType) -> Result<()> {
         match val_ty {
-            ValType::List(v) => unimplemented!(),
+            ValType::List(list) => {
+                for v in list {
+                    self.process_value_ty(v);
+                }
+            }
             ValType::Map(map) => {
                 for (_, v) in map {
                     self.process_value_ty(v)?;
                 }
             }
             ValType::SingleValue(val) => self.process_yaml_value(val)?,
-            ValType::Variable(name) => {
-                if let Some(v) = self.local_var_pool.get(name) {
-                    *val_ty = ValType::SingleValue(v.clone())
-                } else if let Some(v) = self.global_var_pool.get(name) {
-                    *val_ty = ValType::SingleValue(v.clone())
-                } else {
-                    return Err(failure::err_msg(""));
-                }
-            }
-            ValType::LoopVariable(v) => unimplemented!(),
         }
 
         Ok(())
     }
     fn process_yaml_value(&self, value: &mut serde_yaml::Value) -> Result<()> {
-        if let Some(val) = value.as_str() {
-            if val.contains("{{") && val.contains("}}") {
-                let val = val.replace("{{", "").replace("}}", "");
-                let var_name = VariableName(val.trim().to_string());
+        if let Some(v) = value.as_str() {
+            if v.contains("{{") && v.contains("}}") {
+                let v = v.replace("{{", "").replace("}}", "");
+                let var_name = VariableName(v.trim().to_string());
 
                 if var_name.0.starts_with("item.") {
                     if let Some(var) = self.local_var_pool.get_loop(self.loop_index, &var_name) {
@@ -149,6 +189,8 @@ impl<'a> PrimitiveConverter<'a> {
                         )));
                     }
                 }
+
+                self.process_yaml_value(value)?;
             }
         } else if let Some(seq) = value.as_sequence_mut() {
             for val in seq {
@@ -178,17 +220,11 @@ enum YamlItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Vars {
-    vars: VarsType,
+    vars: VarType,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-enum VarsType {
-    Map(HashMap<VariableName, ValType>),
-    ListMap(Vec<HashMap<VariableName, ValType>>),
-    List(Vec<ValType>),
-    SingleValue(ValType),
-}
+struct VarType(HashMap<VariableName, serde_yaml::Value>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -196,8 +232,6 @@ enum ValType {
     List(Vec<ValType>),
     Map(HashMap<String, ValType>),
     SingleValue(serde_yaml::Value),
-    Variable(VariableName),
-    LoopVariable(VariableName),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -207,7 +241,7 @@ pub struct VariableName(String);
 struct Task {
     name: String,
     #[serde(flatten)]
-    properties: HashMap<KeyType, ValType>,
+    properties: HashMap<KeyType, serde_yaml::Value>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -237,30 +271,6 @@ enum TaskType {
     Execute,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize)]
-enum ValueType {
-    Variable(String),
-    LoopVariable(String),
-    Value(String),
-}
-
-impl From<String> for ValueType {
-    fn from(val: String) -> Self {
-        if val.contains("{{") && val.contains("}}") {
-            let val = val.replace("{{", "").replace("}}", "");
-            let trimmed = val.trim();
-
-            if trimmed.starts_with("item.") {
-                ValueType::LoopVariable(trimmed.replace("item.", "").to_string())
-            } else {
-                ValueType::Variable(trimmed.to_string())
-            }
-        } else {
-            ValueType::Value(val)
-        }
-    }
-}
-
 struct VarPool {
     pool: HashMap<VariableName, serde_yaml::Value>,
     loop_pool: Vec<HashMap<VariableName, serde_yaml::Value>>,
@@ -273,8 +283,10 @@ impl VarPool {
             loop_pool: vec![],
         }
     }
-    fn insert(&mut self, name: VariableName, value: serde_yaml::Value) {
-        self.insert(name, value)
+    fn insert(&mut self, vars: VarType) {
+        for (name, val) in vars.0 {
+            self.pool.insert(name, val);
+        }
     }
     fn insert_loop(&mut self, pool: HashMap<VariableName, serde_yaml::Value>) {
         self.loop_pool.push(pool);
@@ -301,5 +313,17 @@ impl TaskList {
     }
     fn add(&mut self, task: Task) {
         self.tasks.push(task);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converter() {
+        let yaml = r#"
+        
+        "#;
     }
 }
