@@ -77,13 +77,15 @@ fn task_parser(properties: HashMap<KeyType, ValType>) -> Result<()> {
 struct PrimitiveConverter<'a> {
     global_var_pool: &'a VarPool,
     local_var_pool: &'a VarPool,
+    loop_index: usize,
 }
 
 impl<'a> PrimitiveConverter<'a> {
-    fn new(global: &'a VarPool, local: &'a VarPool) -> Self {
+    fn new(global: &'a VarPool, local: &'a VarPool, index: usize) -> Self {
         PrimitiveConverter {
             global_var_pool: global,
             local_var_pool: local,
+            loop_index: index,
         }
     }
     fn process_properties(&self, properties: &mut HashMap<String, ValType>) -> Result<()> {
@@ -108,7 +110,7 @@ impl<'a> PrimitiveConverter<'a> {
                 } else if let Some(v) = self.global_var_pool.get(name) {
                     *val_ty = ValType::SingleValue(v.clone())
                 } else {
-                    return Err(failure::err_msg(""))
+                    return Err(failure::err_msg(""));
                 }
             }
             ValType::LoopVariable(v) => unimplemented!(),
@@ -120,19 +122,31 @@ impl<'a> PrimitiveConverter<'a> {
         if let Some(val) = value.as_str() {
             if val.contains("{{") && val.contains("}}") {
                 let val = val.replace("{{", "").replace("}}", "");
-                let trimmed = val.trim();
+                let var_name = VariableName(val.trim().to_string());
 
-                if trimmed.starts_with("item.") {
-                    //ValueType::LoopVariable(trimmed.replace("item.", "").to_string())
-                    unimplemented!()
+                if var_name.0.starts_with("item.") {
+                    if let Some(var) = self.local_var_pool.get_loop(self.loop_index, &var_name) {
+                        *value = var.clone();
+                    } else if let Some(var) =
+                        self.global_var_pool.get_loop(self.loop_index, &var_name)
+                    {
+                        *value = var.clone();
+                    } else {
+                        return Err(failure::err_msg(format!(
+                            "Variable \"{}\" not found",
+                            var_name.0
+                        )));
+                    }
                 } else {
-                    let var_name = VariableName(trimmed.to_string());
                     if let Some(var) = self.local_var_pool.get(&var_name) {
                         *value = var.clone();
                     } else if let Some(var) = self.global_var_pool.get(&var_name) {
                         *value = var.clone();
                     } else {
-                        return Err(failure::err_msg(format!("Variable \"{}\" not found", var_name.0)))
+                        return Err(failure::err_msg(format!(
+                            "Variable \"{}\" not found",
+                            var_name.0
+                        )));
                     }
                 }
             }
@@ -249,19 +263,27 @@ impl From<String> for ValueType {
 
 struct VarPool {
     pool: HashMap<VariableName, serde_yaml::Value>,
+    loop_pool: Vec<HashMap<VariableName, serde_yaml::Value>>,
 }
 
 impl VarPool {
     fn new() -> Self {
         VarPool {
             pool: HashMap::new(),
+            loop_pool: vec![],
         }
     }
     fn insert(&mut self, name: VariableName, value: serde_yaml::Value) {
         self.insert(name, value)
     }
+    fn insert_loop(&mut self, pool: HashMap<VariableName, serde_yaml::Value>) {
+        self.loop_pool.push(pool);
+    }
     fn get<'a>(&'a self, name: &VariableName) -> Option<&'a serde_yaml::Value> {
         self.pool.get(name)
+    }
+    fn get_loop<'a>(&'a self, index: usize, name: &VariableName) -> Option<&'a serde_yaml::Value> {
+        self.loop_pool.get(index).unwrap().get(name)
     }
 }
 
