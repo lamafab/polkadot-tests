@@ -1,12 +1,10 @@
 use super::create_tx;
 use crate::chain_spec::CryptoPair;
 use crate::executor::ClientTemp;
-use crate::primitives::runtime::{Address, Balance, Call, UncheckedExtrinsic};
+use crate::primitives::runtime::{Address, Balance, Call};
 use crate::primitives::RawExtrinsic;
 use crate::Result;
-use codec::Encode;
 use pallet_balances::Call as BalancesCall;
-use sp_core::crypto::Pair;
 
 use std::str::FromStr;
 use structopt::StructOpt;

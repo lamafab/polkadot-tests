@@ -1,10 +1,10 @@
 use super::chain_spec::{gen_chain_spec_thin, ChainSpec};
 use super::Result;
 use crate::primitives::runtime::Block;
-use node_template_runtime::{RuntimeApi, RuntimeApiImpl, RuntimeFunction, WASM_BINARY};
+use node_template_runtime::{RuntimeApi, RuntimeApiImpl};
 use sc_client_api::in_mem::Backend;
 use sc_executor::native_executor_instance;
-use sc_executor::{CallInWasm, NativeExecutor, WasmExecutionMethod, WasmExecutor};
+use sc_executor::{NativeExecutor, WasmExecutionMethod};
 use sc_service::client::{new_in_mem, Client, ClientConfig, LocalCallExecutor};
 use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_core::testing::TaskExecutor;
@@ -48,6 +48,7 @@ impl ClientTemp {
             .map_err(|_| failure::err_msg("failed to create in-memory client"))?,
         })
     }
+    #[allow(dead_code)]
     pub fn new_with_genesis(chain_spec: ChainSpec) -> Result<ClientTemp> {
         Ok(ClientTemp {
             client: new_in_mem::<_, Block, _, _>(

@@ -4,7 +4,6 @@ use crate::builder::{BlockCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtBlock};
 use crate::Result;
 use parser::{Parser, TaskType};
-use std::fs;
 
 mod parser;
 

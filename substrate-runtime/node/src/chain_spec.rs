@@ -20,15 +20,18 @@ pub struct CryptoPair {
 }
 
 impl CryptoPair {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::from(rand::random::<[u8; 32]>())
     }
     pub fn public(&self) -> sr25519::Public {
         self.pair.public()
     }
+    #[allow(dead_code)]
     pub fn account_id(&self) -> AccountId {
         self.pair.public().into()
     }
+    #[allow(dead_code)]
     pub fn sign(&self, message: &[u8]) -> MultiSignature {
         self.pair.sign(message).into()
     }

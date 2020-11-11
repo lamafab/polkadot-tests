@@ -54,7 +54,7 @@ impl Parser {
 }
 
 fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
-    let mut yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(input)?;
+    let yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(input)?;
 
     let mut tasks = vec![];
     let mut global_vars = None;
@@ -65,7 +65,7 @@ fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
 
     // Process global variables.
     let mut first_vars = false;
-    for mut item in yaml_blocks {
+    for item in yaml_blocks {
         match item {
             YamlItem::Vars(mut vars) => {
                 if !first_vars {
@@ -99,7 +99,7 @@ fn task_parser<T: DeserializeOwned>(
     global_var_pool: &VarPool,
     properties: &HashMap<KeyType, serde_yaml::Value>,
 ) -> Result<Vec<T>> {
-    let mut register = false;
+    let mut _register = false;
 
     let mut local_var_pool = VarPool::new();
     let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, 0);
@@ -109,9 +109,9 @@ fn task_parser<T: DeserializeOwned>(
 
     for (key, val) in properties {
         match key {
-            KeyType::TaskType(task_ty) => {}
+            KeyType::TaskType(_) => {}
             KeyType::Keyword(keyword) => match keyword {
-                Keyword::Register => register = true,
+                Keyword::Register => _register = true,
                 Keyword::Loop => {
                     // Ensure only one `loop:` entry is present per task.
                     if loop_vars.is_none() {
@@ -204,23 +204,6 @@ impl<'a> PrimitiveConverter<'a> {
 
         Ok(())
     }
-    fn process_value_ty(&self, val_ty: &mut ValType) -> Result<()> {
-        match val_ty {
-            ValType::List(list) => {
-                for v in list {
-                    self.process_value_ty(v)?;
-                }
-            }
-            ValType::Map(map) => {
-                for (_, v) in map {
-                    self.process_value_ty(v)?;
-                }
-            }
-            ValType::SingleValue(val) => self.process_yaml_value(val)?,
-        }
-
-        Ok(())
-    }
     #[rustfmt::skip]
     fn process_yaml_value(&self, value: &mut serde_yaml::Value) -> Result<()> {
         if let Some(v) = value.as_str() {
@@ -253,15 +236,6 @@ impl<'a> PrimitiveConverter<'a> {
         }
 
         Ok(())
-    }
-}
-
-#[derive(Hash)]
-struct VariableNameRef<'a>(&'a str);
-
-impl<'a> VariableNameRef<'a> {
-    fn as_str(&self) -> &'a str {
-        self.0
     }
 }
 
@@ -330,7 +304,7 @@ impl VarPool {
             self.pool.0.insert(name, val);
         }
     }
-    fn insert_loop(&mut self, mut pool: LoopType) {
+    fn insert_loop(&mut self, pool: LoopType) {
         self.loop_pool = pool;
     }
     fn get<'a>(&'a self, index: usize, name: &'a VariableName) -> Option<serde_yaml::Value> {
@@ -383,14 +357,6 @@ impl LoopType {
     fn len(&self) -> usize {
         self.0.len()
     }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-enum ValType {
-    List(Vec<ValType>),
-    Map(HashMap<String, ValType>),
-    SingleValue(serde_yaml::Value),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
