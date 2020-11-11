@@ -10,6 +10,7 @@ mod parser;
 pub struct ToolSpec {}
 
 impl ToolSpec {
+    #[rustfmt::skip]
     pub fn new_from_file(path: &str) -> Result<()> {
         let yaml = fs::read_to_string(path)?;
         let parser = Parser::new(&yaml)?;
@@ -22,8 +23,7 @@ impl ToolSpec {
                 TaskType::Execute => parser.run::<Vec<RawBlock>, (), _>(task, |raw_blocks| {
                     BlockCmd::execute_block(raw_blocks).run()
                 }),
-                TaskType::PalletBalances => parser
-                    .run::<TransferDetails, RawExtrinsic, _>(task, |details| {
+                TaskType::PalletBalances => parser.run::<TransferDetails, RawExtrinsic, _>(task, |details| {
                         PalletBalancesCmd::transer(details).run()
                     }),
             }?;

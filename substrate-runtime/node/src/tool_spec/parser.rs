@@ -1,5 +1,6 @@
 use crate::Result;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -10,7 +11,7 @@ pub struct Parser {
     tasks: Vec<Task>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Outcome<T> {
     name: String,
     data: Vec<T>,
@@ -28,7 +29,7 @@ impl Parser {
     pub fn tasks(&self) -> &Vec<Task> {
         &self.tasks
     }
-    pub fn run<T: DeserializeOwned, R, F: Fn(T) -> Result<R>>(
+    pub fn run<T: DeserializeOwned, R: Serialize, F: Fn(T) -> Result<R>>(
         &self,
         task: &Task,
         f: F,
@@ -40,12 +41,13 @@ impl Parser {
             results.push(f(task)?);
         }
 
-        /*
-        Ok(Outcome {
-            name: task.name().to_string(),
-            data: results,
-        })
-        */
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&Outcome {
+                name: task.name().to_string(),
+                data: results,
+            })?
+        );
 
         Ok(())
     }
