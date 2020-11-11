@@ -727,4 +727,48 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn converter_loop_map_abbreviated_nested() {
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            hair: String,
+            height: usize,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: 33
+                hair: "{{ item.hair }}"
+                height: "{{ item.height }}"
+              loop:
+                - { hair: "blonde", height: 174 }
+                - { hair: "red", height: 165 }
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 2);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                hair: "blonde".to_string(),
+                height: 174,
+            }
+        );
+        assert_eq!(
+            res[1],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                hair: "red".to_string(),
+                height: 165,
+            }
+        );
+    }
 }
