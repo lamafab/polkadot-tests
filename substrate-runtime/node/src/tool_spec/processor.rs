@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::mem::drop;
 
-pub struct Parser {
+pub struct Processor {
     global_var_pool: VarPool,
     tasks: Vec<Task>,
 }
@@ -17,11 +17,11 @@ pub struct Outcome<T> {
     data: Vec<T>,
 }
 
-impl Parser {
+impl Processor {
     pub fn new(input: &str) -> Result<Self> {
         let (global_var_pool, tasks) = global_parser(input)?;
 
-        Ok(Parser {
+        Ok(Processor {
             global_var_pool: global_var_pool,
             tasks: tasks,
         })
@@ -61,7 +61,7 @@ fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
     let mut global_var_pool = VarPool::new();
 
     // A "local" variable pool is not relevant in this context.
-    let converter = PrimitiveConverter::new(&global_var_pool, &global_var_pool, 0);
+    let converter = VariableProcessor::new(&global_var_pool, &global_var_pool, 0);
 
     // Process global variables.
     let mut first_vars = false;
@@ -102,7 +102,7 @@ fn task_parser<T: DeserializeOwned>(
     let mut _register = false;
 
     let mut local_var_pool = VarPool::new();
-    let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, 0);
+    let converter = VariableProcessor::new(global_var_pool, &local_var_pool, 0);
 
     let mut vars = None;
     let mut loop_vars = None;
@@ -164,7 +164,7 @@ fn task_parser<T: DeserializeOwned>(
 
     for index in 0..loop_count {
         let mut loop_properties = properties.clone();
-        let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, index);
+        let converter = VariableProcessor::new(global_var_pool, &local_var_pool, index);
         converter.process_properties(&mut loop_properties)?;
 
         for (key, val) in loop_properties {
@@ -180,15 +180,15 @@ fn task_parser<T: DeserializeOwned>(
     Ok(expanded)
 }
 
-struct PrimitiveConverter<'a> {
+struct VariableProcessor<'a> {
     global_var_pool: &'a VarPool,
     local_var_pool: &'a VarPool,
     loop_index: usize,
 }
 
-impl<'a> PrimitiveConverter<'a> {
+impl<'a> VariableProcessor<'a> {
     fn new(global: &'a VarPool, local: &'a VarPool, index: usize) -> Self {
-        PrimitiveConverter {
+        VariableProcessor {
             global_var_pool: global,
             local_var_pool: local,
             loop_index: index,

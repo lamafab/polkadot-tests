@@ -3,26 +3,26 @@ use crate::builder::blocks::BlockCmdResult;
 use crate::builder::{BlockCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtBlock};
 use crate::Result;
-use parser::{Parser, TaskType};
+use processor::{Processor, TaskType};
 
-mod parser;
+mod processor;
 
 pub struct ToolSpec;
 
 impl ToolSpec {
     #[rustfmt::skip]
     pub fn new(yaml: &str) -> Result<()> {
-        let parser = Parser::new(yaml)?;
+        let proc = Processor::new(yaml)?;
 
-        for task in parser.tasks() {
+        for task in proc.tasks() {
             match task.task_type()? {
-                TaskType::Block => parser.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
+                TaskType::Block => proc.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
                     BlockCmd::build_block(txt_block).run()
                 }),
-                TaskType::Execute => parser.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
+                TaskType::Execute => proc.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
                     BlockCmd::execute_block(raw_blocks).run()
                 }),
-                TaskType::PalletBalances => parser.run::<TransferDetails, RawExtrinsic, _>(task, |details| {
+                TaskType::PalletBalances => proc.run::<TransferDetails, RawExtrinsic, _>(task, |details| {
                         PalletBalancesCmd::transfer(details).run()
                     }),
                 #[cfg(test)]
