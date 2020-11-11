@@ -229,19 +229,18 @@ impl<'a> PrimitiveConverter<'a> {
 
         Ok(())
     }
+    #[rustfmt::skip]
     fn process_yaml_value(&self, value: &mut serde_yaml::Value) -> Result<()> {
         if let Some(v) = value.as_str() {
             if v.contains("{{") && v.contains("}}") {
                 let v = v.replace("{{", "").replace("}}", "");
                 let var_name = VariableName(v.trim().to_string());
 
-                if var_name.0.starts_with("item") {
+                let var = if var_name.0.starts_with("item") {
                     if let Some(var) = self.local_var_pool.get_loop(self.loop_index, &var_name) {
-                        *value = var.clone();
-                    } else if let Some(var) =
-                        self.global_var_pool.get_loop(self.loop_index, &var_name)
-                    {
-                        *value = var.clone();
+                        var
+                    } else if let Some(var) = self.global_var_pool.get_loop(self.loop_index, &var_name) {
+                        var
                     } else {
                         return Err(failure::err_msg(format!(
                             "Variable \"{}\" not found",
@@ -250,16 +249,18 @@ impl<'a> PrimitiveConverter<'a> {
                     }
                 } else {
                     if let Some(var) = self.local_var_pool.get(&var_name) {
-                        *value = var.clone();
+                        var
                     } else if let Some(var) = self.global_var_pool.get(&var_name) {
-                        *value = var.clone();
+                        var
                     } else {
                         return Err(failure::err_msg(format!(
                             "Variable \"{}\" not found",
                             var_name.0
                         )));
                     }
-                }
+                };
+
+                *value = var.clone();
 
                 self.process_yaml_value(value)?;
             }
