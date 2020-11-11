@@ -67,10 +67,9 @@ struct TaskOutcome<T> {
     out: Box<T>,
 }
 
-fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, mut properties: HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
+fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: HashMap<KeyType, serde_yaml::Value>) -> Result<Vec<T>> {
     let mut task = None;
     let mut register = false;
-    let mut first_loop = false;
     let mut first_vars = false;
 
     let mut local_var_pool = VarPool::new();
@@ -91,8 +90,7 @@ fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, mut properties: H
             KeyType::Keyword(keyword) => match keyword {
                 Keyword::Register => register = true,
                 Keyword::Loop => {
-                    if !first_loop {
-                        first_loop = true;
+                    if loop_vars.is_some() {
                         let mut parsed = serde_yaml::from_value::<LoopType>(val.clone())?;
                         for v in &mut parsed.0 {
                             converter.process_yaml_value(v)?;
@@ -122,6 +120,9 @@ fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, mut properties: H
         }
     }
 
+    // Keep track of loop count
+    let loop_count = loop_vars.as_ref().map(|l| l.len()).unwrap_or(1);
+
     // Drop converter so variables can be inserted.
     drop(converter);
 
@@ -133,10 +134,24 @@ fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, mut properties: H
         local_var_pool.insert_loop(vars);
     }
 
-    let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, 0);
-    converter.process_properties(&mut properties)?;
+    let mut expanded = vec![];
 
-    Ok(())
+    for index in 0..loop_count {
+        let mut loop_properties = properties.clone();
+        let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, index);
+        converter.process_properties(&mut loop_properties)?;
+
+        for (key, val) in loop_properties {
+            match key {
+                KeyType::TaskType(_) => {
+                    expanded.push(serde_yaml::from_value::<T>(val)?);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok(expanded)
 }
 
 struct PrimitiveConverter<'a> {
@@ -248,6 +263,12 @@ struct VarType(HashMap<VariableName, serde_yaml::Value>);
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 struct LoopType(Vec<serde_yaml::Value>);
 
+impl LoopType {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 enum ValType {
@@ -271,6 +292,8 @@ struct Task {
 enum KeyType {
     TaskType(TaskType),
     Keyword(Keyword),
+    #[cfg(test)]
+    Key(serde_yaml::Value),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
