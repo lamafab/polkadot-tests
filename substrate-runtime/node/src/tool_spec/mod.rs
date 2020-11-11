@@ -8,7 +8,6 @@ mod block;
 
 pub struct ToolSpec {
     var_pool: VarPool,
-    task_list: TaskList,
 }
 
 impl ToolSpec {
@@ -17,7 +16,6 @@ impl ToolSpec {
         let mut yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(&yaml_file)?;
 
         let mut var_pool = VarPool::new();
-        let mut task_list = TaskList::new();
 
         let mut global_var_pool = VarPool::new();
         let mut global_vars = None;
@@ -52,10 +50,7 @@ impl ToolSpec {
             global_var_pool.insert(vars);
         }
 
-        Ok(ToolSpec {
-            var_pool: var_pool,
-            task_list: task_list,
-        })
+        Ok(ToolSpec { var_pool: var_pool })
     }
     pub fn run(self) {}
 }
@@ -68,15 +63,14 @@ struct TaskOutcome<T> {
 fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
     let mut yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(input)?;
 
-    let mut var_pool = VarPool::new();
-
-    let mut global_var_pool = VarPool::new();
     let mut tasks = vec![];
     let mut global_vars = None;
-    // A local variable pool is not relevant in this context, since we're looking for global variables.
+    let mut global_var_pool = VarPool::new();
+
+    // A "local" variable pool is not relevant in this context.
     let converter = PrimitiveConverter::new(&global_var_pool, &global_var_pool, 0);
 
-    // Process global variables first.
+    // Process global variables.
     let mut first_vars = false;
     for mut item in yaml_blocks {
         match item {
@@ -98,13 +92,14 @@ fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
         }
     }
 
+    // Drop converter so variables can be inserted into pool.
     drop(converter);
 
     if let Some(vars) = global_vars {
         global_var_pool.insert(vars);
     }
 
-    Ok((var_pool, tasks))
+    Ok((global_var_pool, tasks))
 }
 
 fn task_parser<T: DeserializeOwned>(
@@ -125,8 +120,10 @@ fn task_parser<T: DeserializeOwned>(
             KeyType::Keyword(keyword) => match keyword {
                 Keyword::Register => register = true,
                 Keyword::Loop => {
+                    // Ensure only one `loop:` entry is present per task.
                     if loop_vars.is_none() {
                         let mut parsed = serde_yaml::from_value::<LoopType>(val.clone())?;
+
                         for v in &mut parsed.0 {
                             converter.process_yaml_value(v)?;
                         }
@@ -137,8 +134,10 @@ fn task_parser<T: DeserializeOwned>(
                     }
                 }
                 Keyword::Vars => {
+                    // Ensure only one `vars:` entry is present per task.
                     if vars.is_none() {
                         let mut parsed = serde_yaml::from_value::<VarType>(val.clone())?;
+
                         for (_, v) in &mut parsed.0 {
                             converter.process_yaml_value(v)?;
                         }
@@ -158,7 +157,7 @@ fn task_parser<T: DeserializeOwned>(
     let loop_count = loop_vars.as_ref().map(|l| l.len()).unwrap_or(1);
     println!(">> {}", loop_count);
 
-    // Drop converter so variables can be inserted.
+    // Drop converter so variables can be inserted into pool.
     drop(converter);
 
     if let Some(vars) = vars {
@@ -278,9 +277,32 @@ impl<'a> PrimitiveConverter<'a> {
     }
 }
 
-#[test]
-fn tool_spec_init() {
-    ToolSpec::new_from_file("../examples/block_builder.yml").unwrap();
+struct VarPool {
+    pool: VarType,
+    loop_pool: LoopType,
+}
+
+impl VarPool {
+    fn new() -> Self {
+        VarPool {
+            pool: Default::default(),
+            loop_pool: Default::default(),
+        }
+    }
+    fn insert(&mut self, vars: VarType) {
+        for (name, val) in vars.0 {
+            self.pool.0.insert(name, val);
+        }
+    }
+    fn insert_loop(&mut self, mut pool: LoopType) {
+        self.loop_pool = pool;
+    }
+    fn get<'a>(&'a self, name: &VariableName) -> Option<&'a serde_yaml::Value> {
+        self.pool.0.get(name)
+    }
+    fn get_loop<'a>(&'a self, index: usize, _name: &VariableName) -> Option<&'a serde_yaml::Value> {
+        self.loop_pool.0.get(index)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -358,51 +380,6 @@ enum TaskType {
     Animal,
 }
 
-struct VarPool {
-    pool: VarType,
-    loop_pool: LoopType,
-}
-
-impl VarPool {
-    fn new() -> Self {
-        VarPool {
-            pool: Default::default(),
-            loop_pool: Default::default(),
-        }
-    }
-    fn insert(&mut self, vars: VarType) {
-        for (name, val) in vars.0 {
-            self.pool.0.insert(name, val);
-        }
-    }
-    fn insert_loop(&mut self, mut pool: LoopType) {
-        self.loop_pool = pool;
-    }
-    fn get<'a>(&'a self, name: &VariableName) -> Option<&'a serde_yaml::Value> {
-        self.pool.0.get(name)
-    }
-    fn get_loop<'a>(&'a self, index: usize, _name: &VariableName) -> Option<&'a serde_yaml::Value> {
-        self.loop_pool.0.get(index)
-    }
-}
-
-struct TaskList {
-    tasks: Vec<Task>,
-    counter: usize,
-}
-
-impl TaskList {
-    fn new() -> Self {
-        TaskList {
-            tasks: vec![],
-            counter: 0,
-        }
-    }
-    fn add(&mut self, task: Task) {
-        self.tasks.push(task);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -415,7 +392,7 @@ mod tests {
 
     #[test]
     fn converter_simple() {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Person {
             name: String,
             age: usize,
@@ -434,13 +411,19 @@ mod tests {
 
         let res = parse::<Person>(yaml);
         assert_eq!(res.len(), 1);
-
-        println!("{:?}", res);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string().to_string(),
+                age: 33,
+                categories: vec!["business".to_string(), "finance".to_string(),]
+            }
+        );
     }
 
     #[test]
     fn converter_local_vars() {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Person {
             name: String,
             age: usize,
@@ -461,13 +444,19 @@ mod tests {
 
         let res = parse::<Person>(yaml);
         assert_eq!(res.len(), 1);
-
-        println!("{:?}", res);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                categories: vec!["business".to_string(), "finance".to_string(),]
+            }
+        );
     }
 
     #[test]
     fn converter_loop_string() {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Person {
             name: String,
             age: usize,
@@ -490,13 +479,35 @@ mod tests {
 
         let res = parse::<Person>(yaml);
         assert_eq!(res.len(), 3);
-
-        println!("{:?}", res);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                categories: vec!["business".to_string(), "finance".to_string(),]
+            }
+        );
+        assert_eq!(
+            res[1],
+            Person {
+                name: "bob".to_string(),
+                age: 33,
+                categories: vec!["business".to_string(), "finance".to_string(),]
+            }
+        );
+        assert_eq!(
+            res[2],
+            Person {
+                name: "eve".to_string(),
+                age: 33,
+                categories: vec!["business".to_string(), "finance".to_string(),]
+            }
+        );
     }
 
     #[test]
     fn converter_loop_list() {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Person {
             name: String,
             age: usize,
@@ -511,8 +522,8 @@ mod tests {
                 categories: "{{ item }}"
               loop:
                 -
-                  - finance
                   - business
+                  - finance
                 -
                   - hr
                   - marketing
@@ -520,20 +531,34 @@ mod tests {
 
         let res = parse::<Person>(yaml);
         assert_eq!(res.len(), 2);
-
-        println!("{:?}", res);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                categories: vec!["business".to_string(), "finance".to_string(),]
+            }
+        );
+        assert_eq!(
+            res[1],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                categories: vec!["hr".to_string(), "marketing".to_string(),]
+            }
+        );
     }
 
     #[test]
     fn converter_loop_map() {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Person {
             name: String,
             age: usize,
             attributes: Attributes,
         }
 
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Attributes {
             hair: String,
             height: usize,
@@ -547,7 +572,7 @@ mod tests {
                 attributes: "{{ item }}"
               loop:
                 -
-                  hair: blone
+                  hair: blonde
                   height: 174
                 -
                   hair: red
@@ -557,20 +582,40 @@ mod tests {
 
         let res = parse::<Person>(yaml);
         assert_eq!(res.len(), 2);
-
-        println!("{:?}", res);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                attributes: Attributes {
+                    hair: "blonde".to_string(),
+                    height: 174
+                }
+            }
+        );
+        assert_eq!(
+            res[1],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                attributes: Attributes {
+                    hair: "red".to_string(),
+                    height: 165
+                }
+            }
+        );
     }
 
     #[test]
     fn converter_loop_map_abbreviated() {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Person {
             name: String,
             age: usize,
             attributes: Attributes,
         }
 
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
         struct Attributes {
             hair: String,
             height: usize,
@@ -589,7 +634,27 @@ mod tests {
 
         let res = parse::<Person>(yaml);
         assert_eq!(res.len(), 2);
-
-        println!("{:?}", res);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                attributes: Attributes {
+                    hair: "blonde".to_string(),
+                    height: 174
+                }
+            }
+        );
+        assert_eq!(
+            res[1],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                attributes: Attributes {
+                    hair: "red".to_string(),
+                    height: 165
+                }
+            }
+        );
     }
 }
