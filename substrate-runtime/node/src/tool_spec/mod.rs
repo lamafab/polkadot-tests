@@ -296,18 +296,20 @@ impl<'a> NestedVariable<'a> {
     fn incr_index(&self) {
         // `Cell::update()` is not stable yet.
         let current = self.index.get();
-        self.index.set(current+1);
+        self.index.set(current + 1);
     }
     fn is_loop(&self) -> bool {
-        self.names.first().map(|v| 
-            if v.as_str() == "item" {
-                self.incr_index();
-                true
-            } else {
-                false
-            }
-        )
-        .unwrap_or(false)
+        self.names
+            .first()
+            .map(|v| {
+                if v.as_str() == "item" {
+                    self.incr_index();
+                    true
+                } else {
+                    false
+                }
+            })
+            .unwrap_or(false)
     }
     fn name(&'a self) -> Option<&'a VariableName> {
         let index = self.index.get();
