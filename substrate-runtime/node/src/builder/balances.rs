@@ -1,12 +1,11 @@
 use super::create_tx;
-use crate::chain_spec::CryptoPair;
-use crate::executor::ClientTemp;
-use crate::primitives::runtime::{Address, Balance, Call};
-use crate::primitives::RawExtrinsic;
 use crate::Result;
+use crate::executor::ClientInMem;
+use crate::primitives::{ExtrinsicSigner, TxtAccountSeed, RawExtrinsic};
+use crate::primitives::runtime::{Address, Balance, Call};
 use pallet_balances::Call as BalancesCall;
-
 use std::str::FromStr;
+use std::convert::TryInto;
 use structopt::StructOpt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,14 +29,6 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-impl From<RawPrivateKey> for CryptoPair {
-    fn from(val: RawPrivateKey) -> Self {
-        let mut seed = [0; 32];
-        seed.copy_from_slice(&val.0);
-        seed.into()
-    }
-}
-
 #[derive(Debug, StructOpt)]
 pub struct PalletBalancesCmd {
     #[structopt(subcommand)]
@@ -55,7 +46,7 @@ impl PalletBalancesCmd {
 #[derive(Debug, Clone, StructOpt, Serialize, Deserialize)]
 pub struct TransferDetails {
     #[structopt(short, long)]
-    from: RawPrivateKey,
+    from: TxtAccountSeed,
     #[structopt(short, long)]
     to: Address,
     #[structopt(short, long)]
@@ -73,10 +64,10 @@ enum CallCmd {
 impl PalletBalancesCmd {
     pub fn run(self) -> Result<RawExtrinsic> {
         match self.call {
-            CallCmd::Transfer { details } => ClientTemp::new()?
+            CallCmd::Transfer { details } => ClientInMem::new()?
                 .exec_context(|| {
-                    create_tx(
-                        details.from.into(),
+                    create_tx::<ExtrinsicSigner>(
+                        details.from.try_into()?,
                         Call::Balances(BalancesCall::transfer(details.to.into(), details.balance)),
                         0,
                     )

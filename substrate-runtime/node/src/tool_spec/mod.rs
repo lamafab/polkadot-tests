@@ -44,10 +44,10 @@ mod tests {
             - name: Build block
               block:
                 header:
-                  parent_hash: "0000000000000000000000000000000000000000000000000000000000000000"
-                  number: "44"
-                  state_root: "29d0d972cd27cbc511e9589fcb7a4506d5eb6a9e8df205f00472e5ab354a4e17"
-                  extrinsics_root: "03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314"
+                  parent_hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
+                  number: "0x0"
+                  state_root: "0x29d0d972cd27cbc511e9589fcb7a4506d5eb6a9e8df205f00472e5ab354a4e17"
+                  extrinsics_root: "0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314"
                   digest:
                     logs: []
                 extrinsics: []

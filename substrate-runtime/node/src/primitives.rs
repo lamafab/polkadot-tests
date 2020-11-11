@@ -3,6 +3,8 @@ use codec::Decode;
 use codec::Encode;
 use runtime::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
 use sp_core::H256;
+use sp_core::sr25519;
+use sp_core::crypto::Pair;
 use sp_runtime::generic::{Digest, DigestItem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -36,7 +38,21 @@ from_str!(
     TxtHash
     TxtBlockNumber
     TxtExtrinsic
+    TxtAccountSeed
 );
+
+pub type ExtrinsicSigner = sr25519::Pair;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TxtAccountSeed(String);
+
+impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
+    type Error = failure::Error;
+
+    fn try_from(val: TxtAccountSeed) -> Result<Self> {
+        Ok(ExtrinsicSigner::from_string(&val.0, None).map_err(|_| failure::err_msg(format!("Failed to convert seed to private key")))?)
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawExtrinsic(Vec<u8>);

@@ -1,17 +1,23 @@
 use super::Result;
-use crate::chain_spec::CryptoPair;
-use crate::primitives::runtime::{Call, SignedExtra, UncheckedExtrinsic};
+use crate::primitives::runtime::{Call, SignedExtra, UncheckedExtrinsic, AccountId};
 use codec::Encode;
+use sp_runtime::{MultiSigner, MultiSignature};
 use sp_runtime::generic::{Era, SignedPayload};
-use sp_runtime::traits::SignedExtension;
+use sp_runtime::traits::{SignedExtension, IdentifyAccount, Verify};
+use sp_core::crypto::Pair;
 
 pub mod balances;
 pub mod blocks;
+pub mod genesis;
 
 pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
 
-fn create_tx(signer: CryptoPair, function: Call, nonce: u32) -> Result<UncheckedExtrinsic> {
+fn create_tx<P: Pair>(pair: P, function: Call, nonce: u32) -> Result<UncheckedExtrinsic>
+where
+    AccountId: From<<P as Pair>::Public>,
+    MultiSignature: From<<P as Pair>::Signature>,
+{
     fn extra_err() -> failure::Error {
         failure::err_msg("Failed to retrieve additionally signed extra")
     }
@@ -47,13 +53,13 @@ fn create_tx(signer: CryptoPair, function: Call, nonce: u32) -> Result<Unchecked
 
     let payload = SignedPayload::from_raw(function, extra, additional_extra);
 
-    let signature = payload.using_encoded(|payload| signer.sign(payload));
+    let signature = payload.using_encoded(|payload| pair.sign(payload));
 
     let (function, extra, _) = payload.deconstruct();
 
     Ok(UncheckedExtrinsic::new_signed(
         function,
-        signer.public().into(),
+        pair.public().into(),
         signature.into(),
         extra,
     ))

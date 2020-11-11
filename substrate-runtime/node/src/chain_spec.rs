@@ -15,36 +15,6 @@ use sp_runtime::MultiSignature;
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 
-pub struct CryptoPair {
-    pair: sr25519::Pair,
-}
-
-impl CryptoPair {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self::from(rand::random::<[u8; 32]>())
-    }
-    pub fn public(&self) -> sr25519::Public {
-        self.pair.public()
-    }
-    #[allow(dead_code)]
-    pub fn account_id(&self) -> AccountId {
-        self.pair.public().into()
-    }
-    #[allow(dead_code)]
-    pub fn sign(&self, message: &[u8]) -> MultiSignature {
-        self.pair.sign(message).into()
-    }
-}
-
-impl From<[u8; 32]> for CryptoPair {
-    fn from(val: [u8; 32]) -> Self {
-        CryptoPair {
-            pair: sr25519::Pair::from_seed(&val),
-        }
-    }
-}
-
 /// Generate a crypto pair from seed.
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
     TPublic::Pair::from_string(&format!("//{}", seed), None)
@@ -72,7 +42,7 @@ pub fn gen_chain_spec_thin() -> Result<ChainSpec, String> {
 }
 
 pub fn gen_chain_spec_with_accounts(
-    _endowed_accounts: Vec<AccountId>,
+    endowed_accounts: Vec<AccountId>,
 ) -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
 
@@ -90,11 +60,7 @@ pub fn gen_chain_spec_with_accounts(
                 // Sudo account
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 // Pre-funded accounts
-                vec![
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    get_account_id_from_seed::<sr25519::Public>("Bob"),
-                    get_account_id_from_seed::<sr25519::Public>("Charlie"),
-                ],
+                &endowed_accounts,
                 true,
             )
         },
@@ -116,7 +82,7 @@ fn testnet_genesis(
     wasm_binary: &[u8],
     initial_authorities: Vec<(AuraId, GrandpaId)>,
     root_key: AccountId,
-    endowed_accounts: Vec<AccountId>,
+    endowed_accounts: &Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
     GenesisConfig {

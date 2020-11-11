@@ -20,20 +20,20 @@ native_executor_instance!(
     frame_benchmarking::benchmarking::HostFunctions,
 );
 
-type ClientTempDef = Client<
+type ClientInMemDef = Client<
     Backend<Block>,
     LocalCallExecutor<Backend<Block>, NativeExecutor<Executor>>,
     Block,
     RuntimeApi,
 >;
 
-pub struct ClientTemp {
-    client: ClientTempDef,
+pub struct ClientInMem {
+    client: ClientInMemDef,
 }
 
-impl ClientTemp {
-    pub fn new() -> Result<ClientTemp> {
-        Ok(ClientTemp {
+impl ClientInMem {
+    pub fn new() -> Result<ClientInMem> {
+        Ok(ClientInMem {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
                 &gen_chain_spec_thin()
@@ -49,8 +49,8 @@ impl ClientTemp {
         })
     }
     #[allow(dead_code)]
-    pub fn new_with_genesis(chain_spec: ChainSpec) -> Result<ClientTemp> {
-        Ok(ClientTemp {
+    pub fn new_with_genesis(chain_spec: ChainSpec) -> Result<ClientInMem> {
+        Ok(ClientInMem {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
                 &chain_spec
@@ -75,7 +75,7 @@ impl ClientTemp {
 
         res
     }
-    pub fn runtime_api<'a>(&'a self) -> ApiRef<'a, RuntimeApiImpl<Block, ClientTempDef>> {
+    pub fn runtime_api<'a>(&'a self) -> ApiRef<'a, RuntimeApiImpl<Block, ClientInMemDef>> {
         self.client.runtime_api()
     }
 }

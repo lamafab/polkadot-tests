@@ -1,4 +1,4 @@
-use crate::executor::ClientTemp;
+use crate::executor::ClientInMem;
 use crate::primitives::runtime::{Block, BlockId};
 use crate::primitives::{RawBlock, TxtBlock};
 use crate::Result;
@@ -55,7 +55,7 @@ impl BlockCmd {
                 let (at, header, extrinsics) = spec_block.prep()?;
 
                 // Create the block by calling the runtime APIs.
-                let client = ClientTemp::new()?;
+                let client = ClientInMem::new()?;
                 let rt = client.runtime_api();
 
                 rt.initialize_block(&at, &header).map_err(|err| {
@@ -92,7 +92,7 @@ impl BlockCmd {
             }
             CallCmd::ExecuteBlocks { blocks } => {
                 // Create the block by calling the runtime APIs.
-                let client = ClientTemp::new()?;
+                let client = ClientInMem::new()?;
                 let rt = client.runtime_api();
 
                 // Convert into runtime native type.
