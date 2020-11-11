@@ -157,7 +157,6 @@ fn task_parser<T: DeserializeOwned>(
 
     // Keep track of loop count
     let loop_count = loop_vars.as_ref().map(|l| l.len()).unwrap_or(1);
-    println!(">> {}", loop_count);
 
     // Drop converter so variables can be inserted into pool.
     drop(converter);
@@ -488,7 +487,7 @@ mod tests {
             Person {
                 name: "alice".to_string().to_string(),
                 age: 33,
-                categories: vec!["business".to_string(), "finance".to_string(),]
+                categories: vec!["business".to_string(), "finance".to_string()]
             }
         );
     }
@@ -521,7 +520,48 @@ mod tests {
             Person {
                 name: "alice".to_string(),
                 age: 33,
-                categories: vec!["business".to_string(), "finance".to_string(),]
+                categories: vec!["business".to_string(), "finance".to_string()]
+            }
+        );
+    }
+
+    #[test]
+    fn converter_local_vars_map_abbreviated_nested() {
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            categories: Vec<String>,
+            employer: String,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: "{{ info.age }}"
+                categories: "{{ info.categories }}"
+                employer: "{{ info.job.employer}}"
+              vars:
+                info: {
+                  age: 33,
+                  categories: ["business", "finance"],
+                  job: {
+                    position: "accountant",
+                    employer: "CorpA"
+                  }
+                }
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 1);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                categories: vec!["business".to_string(), "finance".to_string()],
+                employer: "CorpA".to_string(),
             }
         );
     }
@@ -556,7 +596,7 @@ mod tests {
             Person {
                 name: "alice".to_string(),
                 age: 33,
-                categories: vec!["business".to_string(), "finance".to_string(),]
+                categories: vec!["business".to_string(), "finance".to_string()]
             }
         );
         assert_eq!(
@@ -564,7 +604,7 @@ mod tests {
             Person {
                 name: "bob".to_string(),
                 age: 33,
-                categories: vec!["business".to_string(), "finance".to_string(),]
+                categories: vec!["business".to_string(), "finance".to_string()]
             }
         );
         assert_eq!(
@@ -572,7 +612,7 @@ mod tests {
             Person {
                 name: "eve".to_string(),
                 age: 33,
-                categories: vec!["business".to_string(), "finance".to_string(),]
+                categories: vec!["business".to_string(), "finance".to_string()]
             }
         );
     }
@@ -608,7 +648,7 @@ mod tests {
             Person {
                 name: "alice".to_string(),
                 age: 33,
-                categories: vec!["business".to_string(), "finance".to_string(),]
+                categories: vec!["business".to_string(), "finance".to_string()]
             }
         );
         assert_eq!(
@@ -616,7 +656,7 @@ mod tests {
             Person {
                 name: "alice".to_string(),
                 age: 33,
-                categories: vec!["hr".to_string(), "marketing".to_string(),]
+                categories: vec!["hr".to_string(), "marketing".to_string()]
             }
         );
     }
