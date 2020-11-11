@@ -2,6 +2,7 @@ use crate::Result;
 use std::collections::HashMap;
 use std::fs;
 use std::mem::drop;
+use serde::de::DeserializeOwned;
 
 mod block;
 
@@ -56,7 +57,9 @@ impl ToolSpec {
             task_list: task_list,
         })
     }
-    pub fn run(self) {}
+    pub fn run(self) {
+
+    }
 }
 
 struct TaskOutcome<T> {
@@ -64,13 +67,17 @@ struct TaskOutcome<T> {
     out: Box<T>,
 }
 
-fn task_parser(properties: HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
+fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, mut properties: HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
     let mut task = None;
-    let mut local_var_pool = VarPool::new();
-
     let mut register = false;
     let mut first_loop = false;
     let mut first_vars = false;
+
+    let mut local_var_pool = VarPool::new();
+    let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, 0);
+
+    let mut vars = None;
+    let mut loop_vars = None;
 
     for (key, val) in &properties {
         match key {
@@ -86,7 +93,12 @@ fn task_parser(properties: HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
                 Keyword::Loop => {
                     if !first_loop {
                         first_loop = true;
-                        local_var_pool.insert(serde_yaml::from_value(val.clone())?);
+                        let mut parsed = serde_yaml::from_value::<LoopType>(val.clone())?;
+                        for v in &mut parsed.0 {
+                            converter.process_yaml_value(v)?;
+                        }
+
+                        loop_vars = Some(parsed);
                     } else {
                         return Err(failure::err_msg("Only one loop entry per task allowed"));
                     }
@@ -94,7 +106,12 @@ fn task_parser(properties: HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
                 Keyword::Vars => {
                     if !first_vars {
                         first_vars = true;
-                        local_var_pool.insert(serde_yaml::from_value(val.clone())?);
+                        let mut parsed = serde_yaml::from_value::<VarType>(val.clone())?;
+                        for (_, v) in &mut parsed.0 {
+                            converter.process_yaml_value(v)?;
+                        }
+
+                        vars = Some(parsed);
                     } else {
                         return Err(failure::err_msg(
                             "Only one variable entry per task allowed ",
@@ -105,17 +122,19 @@ fn task_parser(properties: HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
         }
     }
 
-    let task = task.ok_or(failure::err_msg("Not task specified"));
+    // Drop converter so variables can be inserted.
+    drop(converter);
 
-    for (_, val) in &properties {}
-
-    /*
-    match task_ty {
-        TaskType::Block => unimplemented!(),
-        TaskType::PalletBalances => unimplemented!(),
-        TaskType::Execute => unimplemented!(),
+    if let Some(vars) = vars {
+        local_var_pool.insert(vars);
     }
-    */
+
+    if let Some(vars) = loop_vars {
+        local_var_pool.insert_loop(vars);
+    }
+
+    let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, 0);
+    converter.process_properties(&mut properties)?;
 
     Ok(())
 }
@@ -134,9 +153,9 @@ impl<'a> PrimitiveConverter<'a> {
             loop_index: index,
         }
     }
-    fn process_properties(&self, properties: &mut HashMap<String, ValType>) -> Result<()> {
+    fn process_properties(&self, properties: &mut HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
         for (_, val) in properties {
-            self.process_value_ty(val)?;
+            self.process_yaml_value(val)?;
         }
 
         Ok(())
@@ -164,7 +183,7 @@ impl<'a> PrimitiveConverter<'a> {
                 let v = v.replace("{{", "").replace("}}", "");
                 let var_name = VariableName(v.trim().to_string());
 
-                if var_name.0.starts_with("item.") {
+                if var_name.0.starts_with("item") {
                     if let Some(var) = self.local_var_pool.get_loop(self.loop_index, &var_name) {
                         *value = var.clone();
                     } else if let Some(var) =
@@ -223,8 +242,11 @@ struct Vars {
     vars: VarType,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 struct VarType(HashMap<VariableName, serde_yaml::Value>);
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+struct LoopType(Vec<serde_yaml::Value>);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -272,30 +294,30 @@ enum TaskType {
 }
 
 struct VarPool {
-    pool: HashMap<VariableName, serde_yaml::Value>,
-    loop_pool: Vec<HashMap<VariableName, serde_yaml::Value>>,
+    pool: VarType,
+    loop_pool: LoopType,
 }
 
 impl VarPool {
     fn new() -> Self {
         VarPool {
-            pool: HashMap::new(),
-            loop_pool: vec![],
+            pool: Default::default(),
+            loop_pool: Default::default(),
         }
     }
     fn insert(&mut self, vars: VarType) {
         for (name, val) in vars.0 {
-            self.pool.insert(name, val);
+            self.pool.0.insert(name, val);
         }
     }
-    fn insert_loop(&mut self, pool: HashMap<VariableName, serde_yaml::Value>) {
-        self.loop_pool.push(pool);
+    fn insert_loop(&mut self, mut pool: LoopType) {
+        self.loop_pool = pool;
     }
     fn get<'a>(&'a self, name: &VariableName) -> Option<&'a serde_yaml::Value> {
-        self.pool.get(name)
+        self.pool.0.get(name)
     }
-    fn get_loop<'a>(&'a self, index: usize, name: &VariableName) -> Option<&'a serde_yaml::Value> {
-        self.loop_pool.get(index).unwrap().get(name)
+    fn get_loop<'a>(&'a self, index: usize, _name: &VariableName) -> Option<&'a serde_yaml::Value> {
+        self.loop_pool.0.get(index)
     }
 }
 
