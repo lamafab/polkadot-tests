@@ -2,7 +2,6 @@
 extern crate serde;
 
 mod builder;
-mod chain_spec;
 mod cli;
 mod command;
 mod executor;

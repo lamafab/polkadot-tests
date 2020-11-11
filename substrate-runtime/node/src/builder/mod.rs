@@ -1,10 +1,10 @@
 use super::Result;
-use crate::primitives::runtime::{Call, SignedExtra, UncheckedExtrinsic, AccountId};
+use crate::primitives::runtime::{AccountId, Call, SignedExtra, UncheckedExtrinsic};
 use codec::Encode;
-use sp_runtime::{MultiSigner, MultiSignature};
-use sp_runtime::generic::{Era, SignedPayload};
-use sp_runtime::traits::{SignedExtension, IdentifyAccount, Verify};
 use sp_core::crypto::Pair;
+use sp_runtime::generic::{Era, SignedPayload};
+use sp_runtime::traits::SignedExtension;
+use sp_runtime::MultiSignature;
 
 pub mod balances;
 pub mod blocks;
@@ -12,6 +12,7 @@ pub mod genesis;
 
 pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
+pub use genesis::GenesisCmd;
 
 fn create_tx<P: Pair>(pair: P, function: Call, nonce: u32) -> Result<UncheckedExtrinsic>
 where

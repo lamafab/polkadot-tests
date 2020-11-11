@@ -1,19 +1,58 @@
-use node_template_runtime::{
+use crate::primitives::runtime::{
     AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
     SystemConfig, WASM_BINARY,
 };
+use crate::primitives::{ChainSpec, ExtrinsicSigner, TxtAccountSeed};
+use crate::Result;
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
-use sp_runtime::MultiSignature;
+use std::convert::TryFrom;
+use structopt::StructOpt;
 
-// The URL for the telemetry server.
-// const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
+#[derive(Debug, StructOpt)]
+pub struct GenesisCmd {
+    #[structopt(subcommand)]
+    call: CallCmd,
+}
 
-/// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+impl GenesisCmd {
+    pub fn default() -> Self {
+        GenesisCmd {
+            call: CallCmd::Default,
+        }
+    }
+    pub fn accounts(accounts: Vec<TxtAccountSeed>) -> Self {
+        GenesisCmd {
+            call: CallCmd::Accounts { accounts: accounts },
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
+enum CallCmd {
+    Default,
+    Accounts {
+        #[structopt(short, long)]
+        accounts: Vec<TxtAccountSeed>,
+    },
+}
+
+impl GenesisCmd {
+    pub fn run(self) -> Result<ChainSpec> {
+        match self.call {
+            CallCmd::Default => gen_chain_spec_default(),
+            CallCmd::Accounts { accounts } => gen_chain_spec_with_accounts(
+                accounts
+                    .into_iter()
+                    .map(|seed| ExtrinsicSigner::try_from(seed).map(|pair| pair.public().into()))
+                    .collect::<Result<Vec<AccountId>>>()?,
+            ),
+        }
+    }
+}
 
 /// Generate a crypto pair from seed.
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -37,14 +76,13 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
     (get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
 }
 
-pub fn gen_chain_spec_thin() -> Result<ChainSpec, String> {
+pub fn gen_chain_spec_default() -> Result<ChainSpec> {
     gen_chain_spec_with_accounts(vec![])
 }
 
-pub fn gen_chain_spec_with_accounts(
-    endowed_accounts: Vec<AccountId>,
-) -> Result<ChainSpec, String> {
-    let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+pub fn gen_chain_spec_with_accounts(endowed_accounts: Vec<AccountId>) -> Result<ChainSpec> {
+    let wasm_binary =
+        WASM_BINARY.ok_or(failure::err_msg("Development wasm binary not available"))?;
 
     Ok(ChainSpec::from_genesis(
         // Name

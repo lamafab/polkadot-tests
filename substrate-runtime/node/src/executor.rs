@@ -1,6 +1,7 @@
-use super::chain_spec::{gen_chain_spec_thin, ChainSpec};
 use super::Result;
+use crate::builder::GenesisCmd;
 use crate::primitives::runtime::Block;
+use crate::primitives::ChainSpec;
 use node_template_runtime::{RuntimeApi, RuntimeApiImpl};
 use sc_client_api::in_mem::Backend;
 use sc_executor::native_executor_instance;
@@ -36,8 +37,8 @@ impl ClientInMem {
         Ok(ClientInMem {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
-                &gen_chain_spec_thin()
-                    .map_err(|_| failure::err_msg("Failed to build temporary chain-spec"))?
+                &GenesisCmd::default()
+                    .run()?
                     .build_storage()
                     .map_err(|_| failure::err_msg("Failed to build temporary chain-spec"))?,
                 None,

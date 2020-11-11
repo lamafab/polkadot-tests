@@ -2,9 +2,10 @@ use crate::Result;
 use codec::Decode;
 use codec::Encode;
 use runtime::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
-use sp_core::H256;
-use sp_core::sr25519;
+use sc_service::GenericChainSpec;
 use sp_core::crypto::Pair;
+use sp_core::sr25519;
+use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -15,8 +16,9 @@ use structopt::StructOpt;
 pub mod runtime {
     // `AccountId` -> `sp_runtime::AccountId32`
     pub use node_template_runtime::{
-        AccountId, Address, Balance, Block, BlockId, BlockNumber, Call, Header, Signature,
-        SignedExtra, UncheckedExtrinsic,
+        AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber, Call,
+        GenesisConfig, GrandpaConfig, Header, Signature, SignedExtra, SudoConfig, SystemConfig,
+        UncheckedExtrinsic, WASM_BINARY,
     };
 }
 
@@ -41,6 +43,8 @@ from_str!(
     TxtAccountSeed
 );
 
+pub type ChainSpec = GenericChainSpec<runtime::GenesisConfig>;
+
 pub type ExtrinsicSigner = sr25519::Pair;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,7 +54,8 @@ impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
     type Error = failure::Error;
 
     fn try_from(val: TxtAccountSeed) -> Result<Self> {
-        Ok(ExtrinsicSigner::from_string(&val.0, None).map_err(|_| failure::err_msg(format!("Failed to convert seed to private key")))?)
+        Ok(ExtrinsicSigner::from_string(&val.0, None)
+            .map_err(|_| failure::err_msg(format!("Failed to convert seed to private key")))?)
     }
 }
 
