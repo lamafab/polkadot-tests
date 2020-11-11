@@ -67,10 +67,50 @@ struct TaskOutcome<T> {
     out: Box<T>,
 }
 
-fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: HashMap<KeyType, serde_yaml::Value>) -> Result<Vec<T>> {
-    let mut task = None;
-    let mut register = false;
+fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
+    let mut yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(input)?;
+
+    let mut var_pool = VarPool::new();
+
+    let mut global_var_pool = VarPool::new();
+    let mut tasks = vec![];
+    let mut global_vars = None;
+    // A local variable pool is not relevant in this context, since we're looking for global variables.
+    let converter = PrimitiveConverter::new(&global_var_pool, &global_var_pool, 0);
+
+    // Process global variables first.
     let mut first_vars = false;
+    for mut item in yaml_blocks {
+        match item {
+            YamlItem::Vars(mut vars) => {
+                if !first_vars {
+                    for (_, var) in &mut vars.vars.0 {
+                        converter.process_yaml_value(var)?;
+                    }
+
+                    global_vars = Some(vars.vars);
+                    first_vars = true;
+                } else {
+                    return Err(failure::err_msg(
+                        "Only one global variable entry block allowed",
+                    ));
+                }
+            }
+            YamlItem::Task(task) => tasks.push(task),
+        }
+    }
+
+    drop(converter);
+
+    if let Some(vars) = global_vars {
+        global_var_pool.insert(vars);
+    }
+
+    Ok((var_pool, tasks))
+}
+
+fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: &HashMap<KeyType, serde_yaml::Value>) -> Result<Vec<T>> {
+    let mut register = false;
 
     let mut local_var_pool = VarPool::new();
     let converter = PrimitiveConverter::new(global_var_pool, &local_var_pool, 0);
@@ -78,19 +118,13 @@ fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: HashM
     let mut vars = None;
     let mut loop_vars = None;
 
-    for (key, val) in &properties {
+    for (key, val) in properties {
         match key {
-            KeyType::TaskType(task_ty) => {
-                if task.is_none() {
-                    task = Some(task_ty)
-                } else {
-                    return Err(failure::err_msg("Only one task per yaml block is allowed"));
-                }
-            }
+            KeyType::TaskType(task_ty) => {},
             KeyType::Keyword(keyword) => match keyword {
                 Keyword::Register => register = true,
                 Keyword::Loop => {
-                    if loop_vars.is_some() {
+                    if loop_vars.is_none() {
                         let mut parsed = serde_yaml::from_value::<LoopType>(val.clone())?;
                         for v in &mut parsed.0 {
                             converter.process_yaml_value(v)?;
@@ -102,8 +136,7 @@ fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: HashM
                     }
                 }
                 Keyword::Vars => {
-                    if !first_vars {
-                        first_vars = true;
+                    if vars.is_none() {
                         let mut parsed = serde_yaml::from_value::<VarType>(val.clone())?;
                         for (_, v) in &mut parsed.0 {
                             converter.process_yaml_value(v)?;
@@ -292,8 +325,6 @@ struct Task {
 enum KeyType {
     TaskType(TaskType),
     Keyword(Keyword),
-    #[cfg(test)]
-    Key(serde_yaml::Value),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -314,6 +345,12 @@ enum TaskType {
     PalletBalances,
     #[serde(rename = "execute")]
     Execute,
+    #[cfg(test)]
+    #[serde(rename = "person")]
+    Person,
+    #[cfg(test)]
+    #[serde(rename = "animal")]
+    Animal,
 }
 
 struct VarPool {
@@ -364,11 +401,58 @@ impl TaskList {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::de::DeserializeOwned;
+
+    fn parse<T: DeserializeOwned>(input: &str) -> T {
+        let (var_pool, tasks) = global_parser(input).unwrap();
+        task_parser(&var_pool, &tasks[0].properties).unwrap().remove(0)
+    }
 
     #[test]
-    fn converter() {
+    fn converter_simple() {
+        #[derive(Debug, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            categories: Vec<String>,
+        }
+
         let yaml = r#"
-        
+            - name: Some person
+              person:
+                name: alice
+                age: 33
+                categories:
+                  - business
+                  - finance
         "#;
+
+        let res = parse::<Person>(yaml);
+        println!("{:?}", res);
+    }
+
+    #[test]
+    fn converter_local_vars() {
+        #[derive(Debug, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            categories: Vec<String>,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: "{{ age }}"
+                categories:
+                  - business
+                  - finance
+              vars:
+                age: 33
+        "#;
+
+        let res = parse::<Person>(yaml);
+        println!("{:?}", res);
     }
 }
