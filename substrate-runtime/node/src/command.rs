@@ -30,9 +30,9 @@ pub fn run() -> Result<()> {
     }
 
     match cli.subcommand {
-        Some(Subcommand::PalletBalances(cmd)) => cmd.run().map(|extr| println!("{}", extr))?,
+        Some(Subcommand::PalletBalances(cmd)) => { cmd.run()?; },
         _ => {}
-    }
+    };
 
     Ok(())
 }

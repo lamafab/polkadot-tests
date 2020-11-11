@@ -1,9 +1,11 @@
 use super::create_tx;
+use crate::builder::genesis::get_account_id_from_seed;
 use crate::executor::ClientInMem;
 use crate::primitives::runtime::{Address, Balance, Call};
 use crate::primitives::{ExtrinsicSigner, RawExtrinsic, TxtAccountSeed};
 use crate::Result;
 use pallet_balances::Call as BalancesCall;
+use sp_core::crypto::{Pair, Public};
 use std::convert::TryInto;
 use std::str::FromStr;
 use structopt::StructOpt;
@@ -48,7 +50,7 @@ pub struct TransferDetails {
     #[structopt(short, long)]
     from: TxtAccountSeed,
     #[structopt(short, long)]
-    to: Address,
+    to: TxtAccountSeed,
     #[structopt(short, long)]
     balance: Balance,
 }
@@ -68,7 +70,13 @@ impl PalletBalancesCmd {
                 .exec_context(|| {
                     create_tx::<ExtrinsicSigner>(
                         details.from.try_into()?,
-                        Call::Balances(BalancesCall::transfer(details.to.into(), details.balance)),
+                        Call::Balances(BalancesCall::transfer(
+                            get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
+                                details.to.as_str(),
+                            )
+                            .into(),
+                            details.balance,
+                        )),
                         0,
                     )
                     .map(|t| RawExtrinsic::from(t))

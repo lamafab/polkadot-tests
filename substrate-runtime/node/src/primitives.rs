@@ -3,7 +3,7 @@ use codec::Decode;
 use codec::Encode;
 use runtime::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
 use sc_service::GenericChainSpec;
-use sp_core::crypto::Pair;
+use sp_core::crypto::{Pair, Public};
 use sp_core::sr25519;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
@@ -45,38 +45,33 @@ from_str!(
 
 pub type ChainSpec = GenericChainSpec<runtime::GenesisConfig>;
 
+// TODO: Those should be generic
 pub type ExtrinsicSigner = sr25519::Pair;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxtAccountSeed(String);
 
+impl TxtAccountSeed {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
     type Error = failure::Error;
 
     fn try_from(val: TxtAccountSeed) -> Result<Self> {
-        Ok(ExtrinsicSigner::from_string(&val.0, None)
+        Ok(ExtrinsicSigner::from_string(&format!("//{}", val.0), None)
             .map_err(|_| failure::err_msg(format!("Failed to convert seed to private key")))?)
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RawExtrinsic(Vec<u8>);
-
-impl fmt::Display for RawExtrinsic {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.0))
-    }
-}
-
-impl From<Vec<u8>> for RawExtrinsic {
-    fn from(val: Vec<u8>) -> Self {
-        RawExtrinsic(val)
-    }
-}
+pub struct RawExtrinsic(String);
 
 impl From<UncheckedExtrinsic> for RawExtrinsic {
     fn from(val: UncheckedExtrinsic) -> Self {
-        RawExtrinsic::from(val.encode())
+        RawExtrinsic(hex::encode(val.encode()))
     }
 }
 

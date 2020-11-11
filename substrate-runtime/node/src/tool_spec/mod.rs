@@ -53,4 +53,18 @@ mod tests {
                 extrinsics: []
         "#).unwrap();
     }
+
+    #[test]
+    fn pallet_balances() {
+        ToolSpec::new(
+            r#"
+            - name: Balance transfer
+              pallet_balances:
+                from: alice
+                to: bob
+                balance: 100
+        "#,
+        )
+        .unwrap()
+    }
 }

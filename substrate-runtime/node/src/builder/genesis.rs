@@ -77,7 +77,11 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 }
 
 pub fn gen_chain_spec_default() -> Result<ChainSpec> {
-    gen_chain_spec_with_accounts(vec![])
+    gen_chain_spec_with_accounts(vec![
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("alice"),
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("bob"),
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("dave"),
+    ])
 }
 
 pub fn gen_chain_spec_with_accounts(endowed_accounts: Vec<AccountId>) -> Result<ChainSpec> {
@@ -94,9 +98,9 @@ pub fn gen_chain_spec_with_accounts(endowed_accounts: Vec<AccountId>) -> Result<
             testnet_genesis(
                 wasm_binary,
                 // Initial PoA authorities
-                vec![authority_keys_from_seed("Alice")],
+                vec![authority_keys_from_seed("alice")],
                 // Sudo account
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
+                get_account_id_from_seed::<sr25519::Public>("alice"),
                 // Pre-funded accounts
                 &endowed_accounts,
                 true,
