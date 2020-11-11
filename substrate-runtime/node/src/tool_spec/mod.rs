@@ -1,8 +1,8 @@
 use crate::Result;
+use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 use std::fs;
 use std::mem::drop;
-use serde::de::DeserializeOwned;
 
 mod block;
 
@@ -57,9 +57,7 @@ impl ToolSpec {
             task_list: task_list,
         })
     }
-    pub fn run(self) {
-
-    }
+    pub fn run(self) {}
 }
 
 struct TaskOutcome<T> {
@@ -109,7 +107,10 @@ fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
     Ok((var_pool, tasks))
 }
 
-fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: &HashMap<KeyType, serde_yaml::Value>) -> Result<Vec<T>> {
+fn task_parser<T: DeserializeOwned>(
+    global_var_pool: &VarPool,
+    properties: &HashMap<KeyType, serde_yaml::Value>,
+) -> Result<Vec<T>> {
     let mut register = false;
 
     let mut local_var_pool = VarPool::new();
@@ -120,7 +121,7 @@ fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: &Hash
 
     for (key, val) in properties {
         match key {
-            KeyType::TaskType(task_ty) => {},
+            KeyType::TaskType(task_ty) => {}
             KeyType::Keyword(keyword) => match keyword {
                 Keyword::Register => register = true,
                 Keyword::Loop => {
@@ -155,6 +156,7 @@ fn task_parser<T: DeserializeOwned>(global_var_pool: &VarPool, properties: &Hash
 
     // Keep track of loop count
     let loop_count = loop_vars.as_ref().map(|l| l.len()).unwrap_or(1);
+    println!(">> {}", loop_count);
 
     // Drop converter so variables can be inserted.
     drop(converter);
@@ -201,7 +203,10 @@ impl<'a> PrimitiveConverter<'a> {
             loop_index: index,
         }
     }
-    fn process_properties(&self, properties: &mut HashMap<KeyType, serde_yaml::Value>) -> Result<()> {
+    fn process_properties(
+        &self,
+        properties: &mut HashMap<KeyType, serde_yaml::Value>,
+    ) -> Result<()> {
         for (_, val) in properties {
             self.process_yaml_value(val)?;
         }
@@ -403,9 +408,9 @@ mod tests {
     use super::*;
     use serde::de::DeserializeOwned;
 
-    fn parse<T: DeserializeOwned>(input: &str) -> T {
+    fn parse<T: DeserializeOwned>(input: &str) -> Vec<T> {
         let (var_pool, tasks) = global_parser(input).unwrap();
-        task_parser(&var_pool, &tasks[0].properties).unwrap().remove(0)
+        task_parser(&var_pool, &tasks[0].properties).unwrap()
     }
 
     #[test]
@@ -428,6 +433,8 @@ mod tests {
         "#;
 
         let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 1);
+
         println!("{:?}", res);
     }
 
@@ -453,6 +460,136 @@ mod tests {
         "#;
 
         let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 1);
+
+        println!("{:?}", res);
+    }
+
+    #[test]
+    fn converter_loop_string() {
+        #[derive(Debug, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            categories: Vec<String>,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: "{{ item }}"
+                age: 33
+                categories:
+                  - business
+                  - finance
+              loop:
+                - alice
+                - bob
+                - eve
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 3);
+
+        println!("{:?}", res);
+    }
+
+    #[test]
+    fn converter_loop_list() {
+        #[derive(Debug, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            categories: Vec<String>,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: 33
+                categories: "{{ item }}"
+              loop:
+                -
+                  - finance
+                  - business
+                -
+                  - hr
+                  - marketing
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 2);
+
+        println!("{:?}", res);
+    }
+
+    #[test]
+    fn converter_loop_map() {
+        #[derive(Debug, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            attributes: Attributes,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct Attributes {
+            hair: String,
+            height: usize,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: 33
+                attributes: "{{ item }}"
+              loop:
+                -
+                  hair: blone
+                  height: 174
+                -
+                  hair: red
+                  height: 165
+
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 2);
+
+        println!("{:?}", res);
+    }
+
+    #[test]
+    fn converter_loop_map_abbreviated() {
+        #[derive(Debug, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            attributes: Attributes,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct Attributes {
+            hair: String,
+            height: usize,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: 33
+                attributes: "{{ item }}"
+              loop:
+                - { hair: "blonde", height: 174 }
+                - { hair: "red", height: 165 }
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 2);
+
         println!("{:?}", res);
     }
 }
