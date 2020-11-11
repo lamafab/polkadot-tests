@@ -1,7 +1,9 @@
 use crate::Result;
 use serde::de::DeserializeOwned;
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::fs;
+use std::marker::PhantomData;
 use std::mem::drop;
 
 mod block;
@@ -236,32 +238,18 @@ impl<'a> PrimitiveConverter<'a> {
                 let v = v.replace("{{", "").replace("}}", "");
                 let var_name = VariableName(v.trim().to_string());
 
-                let var = if var_name.0.starts_with("item") {
-                    if let Some(var) = self.local_var_pool.get_loop(self.loop_index, &var_name) {
-                        var
-                    } else if let Some(var) = self.global_var_pool.get_loop(self.loop_index, &var_name) {
-                        var
-                    } else {
-                        return Err(failure::err_msg(format!(
-                            "Variable \"{}\" not found",
-                            var_name.0
-                        )));
-                    }
+                let var = if let Some(var) = self.local_var_pool.get(self.loop_index, &var_name) {
+                    var
+                } else if let Some(var) = self.global_var_pool.get(self.loop_index, &var_name) {
+                    var
                 } else {
-                    if let Some(var) = self.local_var_pool.get(&var_name) {
-                        var
-                    } else if let Some(var) = self.global_var_pool.get(&var_name) {
-                        var
-                    } else {
-                        return Err(failure::err_msg(format!(
-                            "Variable \"{}\" not found",
-                            var_name.0
-                        )));
-                    }
+                    return Err(failure::err_msg(format!(
+                        "Variable \"{}\" not found",
+                        var_name.0
+                    )));
                 };
 
-                *value = var.clone();
-
+                *value = var;
                 self.process_yaml_value(value)?;
             }
         } else if let Some(seq) = value.as_sequence_mut() {
@@ -275,6 +263,61 @@ impl<'a> PrimitiveConverter<'a> {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Hash)]
+struct VariableNameRef<'a>(&'a str);
+
+impl<'a> VariableNameRef<'a> {
+    fn as_str(&self) -> &'a str {
+        self.0
+    }
+}
+
+struct NestedVariable<'a> {
+    names: Vec<VariableName>,
+    index: Cell<usize>,
+    p: PhantomData<&'a ()>,
+}
+
+impl<'a> NestedVariable<'a> {
+    fn new(name: &'a VariableName) -> Self {
+        NestedVariable {
+            names: name
+                .0
+                .split(".")
+                .map(|s| VariableName(s.to_string()))
+                .collect(),
+            index: Cell::new(0),
+            p: PhantomData,
+        }
+    }
+    fn incr_index(&self) {
+        // `Cell::update()` is not stable yet.
+        let current = self.index.get();
+        self.index.set(current+1);
+    }
+    fn is_loop(&self) -> bool {
+        self.names.first().map(|v| 
+            if v.as_str() == "item" {
+                self.incr_index();
+                true
+            } else {
+                false
+            }
+        )
+        .unwrap_or(false)
+    }
+    fn name(&'a self) -> Option<&'a VariableName> {
+        let index = self.index.get();
+        self.names.get(index).map(|v| {
+            self.incr_index();
+            v
+        })
+    }
+    fn generic_name(&self) -> Option<serde_yaml::Value> {
+        self.name().map(|n| serde_yaml::Value::from(n.as_str()))
     }
 }
 
@@ -298,11 +341,31 @@ impl VarPool {
     fn insert_loop(&mut self, mut pool: LoopType) {
         self.loop_pool = pool;
     }
-    fn get<'a>(&'a self, name: &VariableName) -> Option<&'a serde_yaml::Value> {
-        self.pool.0.get(name)
+    fn get<'a>(&'a self, index: usize, name: &'a VariableName) -> Option<serde_yaml::Value> {
+        let nested = NestedVariable::new(name);
+        if nested.is_loop() {
+            Self::search_nested(&nested, self.loop_pool.0.get(index)?).map(|v| v.clone())
+        } else {
+            Self::search_nested(&nested, self.pool.0.get(nested.name()?)?).map(|v| v.clone())
+        }
     }
-    fn get_loop<'a>(&'a self, index: usize, _name: &VariableName) -> Option<&'a serde_yaml::Value> {
-        self.loop_pool.0.get(index)
+    fn search_nested<'a>(
+        nested_var: &'a NestedVariable<'a>,
+        value: &'a serde_yaml::Value,
+    ) -> Option<&'a serde_yaml::Value> {
+        if let Some(name) = nested_var.generic_name() {
+            if let Some(map) = value.as_mapping() {
+                if let Some(v) = map.get(&name) {
+                    Self::search_nested(nested_var, v)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            Some(value)
+        }
     }
 }
 
@@ -340,6 +403,12 @@ enum ValType {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct VariableName(String);
+
+impl VariableName {
+    fn as_str<'a>(&'a self) -> &'a str {
+        self.0.as_str()
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Task {
