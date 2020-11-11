@@ -60,13 +60,13 @@ impl From<UncheckedExtrinsic> for RawExtrinsic {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct RawBlock(Vec<u8>);
+pub struct RawBlock(String);
 
 impl FromStr for RawBlock {
     type Err = failure::Error;
 
     fn from_str(val: &str) -> Result<Self> {
-        Ok(RawBlock(hex::decode(&mut val.as_bytes())?))
+        Ok(RawBlock(String::from_utf8(hex::decode(val)?)?))
     }
 }
 
@@ -74,7 +74,13 @@ impl TryFrom<RawBlock> for Block {
     type Error = failure::Error;
 
     fn try_from(val: RawBlock) -> Result<Self> {
-        Block::decode(&mut val.0.as_slice()).map_err(|err| err.into())
+        Block::decode(&mut val.0.as_bytes()).map_err(|err| err.into())
+    }
+}
+
+impl From<Block> for RawBlock {
+    fn from(val: Block) -> Self {
+        RawBlock(hex::encode(val.encode()))
     }
 }
 

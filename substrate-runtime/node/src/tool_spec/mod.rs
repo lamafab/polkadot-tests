@@ -1,4 +1,5 @@
 use crate::builder::balances::TransferDetails;
+use crate::builder::blocks::BlockCmdResult;
 use crate::builder::{BlockCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtBlock};
 use crate::Result;
@@ -17,10 +18,10 @@ impl ToolSpec {
 
         for task in parser.tasks() {
             match task.task_type()? {
-                TaskType::Block => parser.run::<TxtBlock, (), _>(task, |txt_block| {
+                TaskType::Block => parser.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
                     BlockCmd::build_block(txt_block).run()
                 }),
-                TaskType::Execute => parser.run::<Vec<RawBlock>, (), _>(task, |raw_blocks| {
+                TaskType::Execute => parser.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
                     BlockCmd::execute_block(raw_blocks).run()
                 }),
                 TaskType::PalletBalances => parser.run::<TransferDetails, RawExtrinsic, _>(task, |details| {

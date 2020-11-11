@@ -40,8 +40,15 @@ enum CallCmd {
     },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BlockCmdResult {
+    BuildBlock(RawBlock),
+    ExecuteBlocks,
+}
+
 impl BlockCmd {
-    pub fn run(self) -> Result<()> {
+    pub fn run(self) -> Result<BlockCmdResult> {
         match self.call {
             CallCmd::BuildBlock { spec_block } => {
                 // Convert into runtime types.
@@ -54,14 +61,14 @@ impl BlockCmd {
                 rt.initialize_block(&at, &header)
                     .map_err(|_| failure::err_msg(""))?;
 
-                for extr in extrinsics {
+                for extr in &extrinsics {
                     let apply_result = rt
-                        .apply_extrinsic(&at, extr)
+                        .apply_extrinsic(&at, extr.clone())
                         .map_err(|_| failure::err_msg(""))?;
 
                     if let Err(validity) = apply_result {
                         if validity.exhausted_resources() {
-                            break;
+                            return Err(failure::err_msg("Resources exhausted"));
                         } else {
                             return Err(failure::err_msg("Invalid transaction"));
                         }
@@ -70,8 +77,17 @@ impl BlockCmd {
                     }
                 }
 
-                rt.finalize_block(&at)
+                let header = rt
+                    .finalize_block(&at)
                     .map_err(|_| failure::err_msg("Failed to finalize block"))?;
+
+                Ok(BlockCmdResult::BuildBlock(
+                    Block {
+                        header: header,
+                        extrinsics: extrinsics,
+                    }
+                    .into(),
+                ))
             }
             CallCmd::ExecuteBlocks { blocks } => {
                 // Create the block by calling the runtime APIs.
@@ -90,9 +106,9 @@ impl BlockCmd {
                     rt.execute_block(&at, block.try_into()?)
                         .map_err(|_| failure::err_msg(""))?;
                 }
+
+                Ok(BlockCmdResult::ExecuteBlocks)
             }
         }
-
-        Ok(())
     }
 }

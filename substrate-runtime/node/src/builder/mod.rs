@@ -6,7 +6,7 @@ use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 
 pub mod balances;
-mod blocks;
+pub mod blocks;
 
 pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
