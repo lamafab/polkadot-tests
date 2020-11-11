@@ -1,14 +1,14 @@
 use super::builder;
-use sc_cli::RunCmd;
 use structopt::StructOpt;
+use std::path::PathBuf;
 
 #[derive(Debug, StructOpt)]
 pub struct Cli {
     #[structopt(subcommand)]
-    pub subcommand: Subcommand,
+    pub subcommand: Option<Subcommand>,
 
-    #[structopt(flatten)]
-    pub run: RunCmd,
+    #[structopt(parse(from_os_str))]
+    pub spec_path: Option<PathBuf>,
 }
 
 #[derive(Debug, StructOpt)]

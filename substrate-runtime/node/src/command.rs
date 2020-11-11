@@ -17,6 +17,8 @@
 
 use crate::cli::{Cli, Subcommand};
 use crate::{chain_spec, Result};
+use crate::tool_spec::ToolSpec;
+use std::fs;
 use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
 
 impl SubstrateCli for Cli {
@@ -62,8 +64,13 @@ impl SubstrateCli for Cli {
 pub fn run() -> Result<()> {
     let cli = Cli::from_args();
 
+    if let Some(path) = cli.spec_path {
+        ToolSpec::new(&fs::read_to_string(path)?)?;
+    }
+
     match cli.subcommand {
-        Subcommand::PalletBalances(cmd) => cmd.run().map(|extr| println!("{}", extr))?,
+        Some(Subcommand::PalletBalances(cmd)) => cmd.run().map(|extr| println!("{}", extr))?,
+        _ => {}
     }
 
     Ok(())
