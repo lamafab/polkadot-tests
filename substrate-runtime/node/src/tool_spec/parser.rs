@@ -10,6 +10,12 @@ pub struct Parser {
     tasks: Vec<Task>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct Outcome<T> {
+    name: String,
+    data: Vec<T>,
+}
+
 impl Parser {
     pub fn new(input: &str) -> Result<Self> {
         let (global_var_pool, tasks) = global_parser(input)?;
@@ -22,8 +28,26 @@ impl Parser {
     pub fn tasks(&self) -> &Vec<Task> {
         &self.tasks
     }
-    pub fn parse<T: DeserializeOwned>(&self, task: &Task) -> Result<Vec<T>> {
-        task_parser(&self.global_var_pool, &task.properties)
+    pub fn run<T: DeserializeOwned, R, F: Fn(T) -> Result<R>>(
+        &self,
+        task: &Task,
+        f: F,
+    ) -> Result<()> {
+        let tasks = task_parser(&self.global_var_pool, &task.properties)?;
+        let mut results = vec![];
+
+        for task in tasks {
+            results.push(f(task)?);
+        }
+
+        /*
+        Ok(Outcome {
+            name: task.name().to_string(),
+            data: results,
+        })
+        */
+
+        Ok(())
     }
 }
 

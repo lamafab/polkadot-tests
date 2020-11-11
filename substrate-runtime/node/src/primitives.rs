@@ -1,9 +1,11 @@
 use crate::Result;
 use codec::Decode;
+use codec::Encode;
 use runtime::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::mem;
 use std::str::FromStr;
 use structopt::StructOpt;
@@ -35,6 +37,27 @@ from_str!(
     TxtBlockNumber
     TxtExtrinsic
 );
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RawExtrinsic(Vec<u8>);
+
+impl fmt::Display for RawExtrinsic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(&self.0))
+    }
+}
+
+impl From<Vec<u8>> for RawExtrinsic {
+    fn from(val: Vec<u8>) -> Self {
+        RawExtrinsic(val)
+    }
+}
+
+impl From<UncheckedExtrinsic> for RawExtrinsic {
+    fn from(val: UncheckedExtrinsic) -> Self {
+        RawExtrinsic::from(val.encode())
+    }
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RawBlock(Vec<u8>);

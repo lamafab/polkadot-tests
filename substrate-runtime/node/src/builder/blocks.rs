@@ -13,6 +13,21 @@ pub struct BlockCmd {
     call: CallCmd,
 }
 
+impl BlockCmd {
+    pub fn build_block(txt_block: TxtBlock) -> BlockCmd {
+        BlockCmd {
+            call: CallCmd::BuildBlock {
+                spec_block: txt_block,
+            },
+        }
+    }
+    pub fn execute_block(raw_blocks: Vec<RawBlock>) -> BlockCmd {
+        BlockCmd {
+            call: CallCmd::ExecuteBlocks { blocks: raw_blocks },
+        }
+    }
+}
+
 #[derive(Debug, StructOpt)]
 enum CallCmd {
     BuildBlock {

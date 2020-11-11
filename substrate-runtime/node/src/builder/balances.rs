@@ -2,16 +2,16 @@ use super::create_tx;
 use crate::chain_spec::CryptoPair;
 use crate::executor::ClientTemp;
 use crate::primitives::runtime::{Address, Balance, Call, UncheckedExtrinsic};
+use crate::primitives::RawExtrinsic;
 use crate::Result;
 use codec::Encode;
 use pallet_balances::Call as BalancesCall;
 use sp_core::crypto::Pair;
 
-use std::fmt;
 use std::str::FromStr;
 use structopt::StructOpt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct RawPrivateKey(Vec<u8>);
 
 impl FromStr for RawPrivateKey {
@@ -40,53 +40,46 @@ impl From<RawPrivateKey> for CryptoPair {
     }
 }
 
-#[derive(Debug)]
-pub struct RawExtrinsic(Vec<u8>);
-
-impl fmt::Display for RawExtrinsic {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.0))
-    }
-}
-
-impl From<Vec<u8>> for RawExtrinsic {
-    fn from(val: Vec<u8>) -> Self {
-        RawExtrinsic(val)
-    }
-}
-
-impl From<UncheckedExtrinsic> for RawExtrinsic {
-    fn from(val: UncheckedExtrinsic) -> Self {
-        RawExtrinsic::from(val.encode())
-    }
-}
-
 #[derive(Debug, StructOpt)]
 pub struct PalletBalancesCmd {
     #[structopt(subcommand)]
     call: CallCmd,
 }
 
+impl PalletBalancesCmd {
+    pub fn transer(details: TransferDetails) -> Self {
+        PalletBalancesCmd {
+            call: CallCmd::Transfer { details },
+        }
+    }
+}
+
+#[derive(Debug, Clone, StructOpt, Serialize, Deserialize)]
+pub struct TransferDetails {
+    #[structopt(short, long)]
+    from: RawPrivateKey,
+    #[structopt(short, long)]
+    to: Address,
+    #[structopt(short, long)]
+    balance: Balance,
+}
+
 #[derive(Debug, StructOpt)]
 enum CallCmd {
     Transfer {
-        #[structopt(short, long)]
-        from: RawPrivateKey,
-        #[structopt(short, long)]
-        to: Address,
-        #[structopt(short, long)]
-        balance: Balance,
+        #[structopt(flatten)]
+        details: TransferDetails,
     },
 }
 
 impl PalletBalancesCmd {
     pub fn run(self) -> Result<RawExtrinsic> {
         match self.call {
-            CallCmd::Transfer { from, to, balance } => ClientTemp::new()?
+            CallCmd::Transfer { details } => ClientTemp::new()?
                 .exec_context(|| {
                     create_tx(
-                        from.into(),
-                        Call::Balances(BalancesCall::transfer(to.into(), balance)),
+                        details.from.into(),
+                        Call::Balances(BalancesCall::transfer(details.to.into(), details.balance)),
                         0,
                     )
                     .map(|t| RawExtrinsic::from(t))

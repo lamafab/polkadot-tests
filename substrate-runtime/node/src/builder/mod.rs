@@ -5,10 +5,11 @@ use codec::Encode;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 
-mod balances;
+pub mod balances;
 mod blocks;
 
 pub use balances::PalletBalancesCmd;
+pub use blocks::BlockCmd;
 
 fn create_tx(signer: CryptoPair, function: Call, nonce: u32) -> Result<UncheckedExtrinsic> {
     fn extra_err() -> failure::Error {
