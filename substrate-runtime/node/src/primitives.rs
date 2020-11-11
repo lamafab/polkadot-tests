@@ -101,7 +101,6 @@ impl TryFrom<TxtHash> for H256 {
     type Error = failure::Error;
 
     fn try_from(val: TxtHash) -> Result<Self> {
-        println!(">> {}", val.0);
         Ok(H256::from_slice(&hex::decode(&val.0.replace("0x", ""))?))
     }
 }

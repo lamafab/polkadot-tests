@@ -54,7 +54,6 @@ impl BlockCmd {
                 // Convert into runtime types.
                 let (at, header, extrinsics) = spec_block.prep()?;
 
-                println!("GOT HERE");
                 // Create the block by calling the runtime APIs.
                 let client = ClientTemp::new()?;
                 let rt = client.runtime_api();

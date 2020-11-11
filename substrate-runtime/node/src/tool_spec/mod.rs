@@ -8,7 +8,7 @@ use std::fs;
 
 mod parser;
 
-pub struct ToolSpec {}
+pub struct ToolSpec;
 
 impl ToolSpec {
     #[rustfmt::skip]
@@ -18,7 +18,6 @@ impl ToolSpec {
         for task in parser.tasks() {
             match task.task_type()? {
                 TaskType::Block => parser.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
-                    println!(">> {:?}", txt_block);
                     BlockCmd::build_block(txt_block).run()
                 }),
                 TaskType::Execute => parser.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
