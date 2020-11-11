@@ -275,6 +275,18 @@ impl<'a> NestedVariable<'a> {
             })
             .unwrap_or(false)
     }
+    fn array_index(&self) -> Option<(VariableName, usize)> {
+        let index = self.index.get();
+        if let Some(var) = self.names.get(index) {
+            let split = var.0.split("[").collect::<Vec<&str>>();
+            if let Some(mut dirty_num) = split.get(1) {
+                self.incr_index();
+                return Some((VariableName(split.get(0).unwrap().to_string()), str::parse::<usize>(&dirty_num[..dirty_num.len() - 1]).ok()?))
+            }
+        }
+
+        None
+    }
     fn name(&'a self) -> Option<&'a VariableName> {
         let index = self.index.get();
         self.names.get(index).map(|v| {
@@ -311,6 +323,9 @@ impl VarPool {
         let nested = NestedVariable::new(name);
         if nested.is_loop() {
             Self::search_nested(&nested, self.loop_pool.0.get(index)?).map(|v| v.clone())
+        } else if let Some((name, array_index)) = nested.array_index() {
+            let seq = self.pool.0.get(&name)?.as_sequence()?;
+            Self::search_nested(&nested, seq.get(array_index)?).map(|v| v.clone())
         } else {
             Self::search_nested(&nested, self.pool.0.get(nested.name()?)?).map(|v| v.clone())
         }
@@ -793,6 +808,77 @@ mod tests {
                 age: 33,
                 hair: "red".to_string(),
                 height: 165,
+            }
+        );
+    }
+
+    #[test]
+    fn converter_index_array() {
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            category: String,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: 33
+                category: "{{ category[1] }}"
+              vars:
+                category:
+                  - business
+                  - finance
+                  - hr
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 1);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                category: "finance".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn converter_index_array_nested() {
+        #[derive(Debug, Eq, PartialEq, Deserialize)]
+        struct Person {
+            name: String,
+            age: usize,
+            category: String,
+        }
+
+        let yaml = r#"
+            - name: Some person
+              person:
+                name: alice
+                age: 33
+                category: "{{ category.finance[0] }}"
+              vars:
+                category:
+                  business
+                    - marketing
+                    - customers
+                  finance
+                    - accountant
+                    - cfo
+        "#;
+
+        let res = parse::<Person>(yaml);
+        assert_eq!(res.len(), 1);
+        assert_eq!(
+            res[0],
+            Person {
+                name: "alice".to_string(),
+                age: 33,
+                category: "accountant".to_string(),
             }
         );
     }
