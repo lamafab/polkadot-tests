@@ -67,7 +67,7 @@ impl ClientTemp {
         let mut res = Ok(None);
         self.client
             .state_at(&BlockId::Number(0))
-            .map_err(|_| failure::err_msg(""))?
+            .map_err(|_| failure::err_msg("Failed to set state"))?
             .inspect_with(|| {
                 res = f();
             });

@@ -208,7 +208,7 @@ impl<'a> PrimitiveConverter<'a> {
         match val_ty {
             ValType::List(list) => {
                 for v in list {
-                    self.process_value_ty(v);
+                    self.process_value_ty(v)?;
                 }
             }
             ValType::Map(map) => {
@@ -452,7 +452,6 @@ enum Keyword {
     Vars,
 }
 
-#[cfg(not(test))]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum TaskType {
     #[serde(rename = "block")]
@@ -461,13 +460,10 @@ pub enum TaskType {
     PalletBalances,
     #[serde(rename = "execute")]
     Execute,
-}
-
-#[cfg(test)]
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub enum TaskType {
+    #[cfg(test)]
     #[serde(rename = "person")]
     Person,
+    #[cfg(test)]
     #[serde(rename = "animal")]
     Animal,
 }

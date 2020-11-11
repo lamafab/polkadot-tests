@@ -47,7 +47,7 @@ pub struct PalletBalancesCmd {
 }
 
 impl PalletBalancesCmd {
-    pub fn transer(details: TransferDetails) -> Self {
+    pub fn transfer(details: TransferDetails) -> Self {
         PalletBalancesCmd {
             call: CallCmd::Transfer { details },
         }

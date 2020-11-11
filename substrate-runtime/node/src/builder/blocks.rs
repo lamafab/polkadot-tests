@@ -54,17 +54,19 @@ impl BlockCmd {
                 // Convert into runtime types.
                 let (at, header, extrinsics) = spec_block.prep()?;
 
+                println!("GOT HERE");
                 // Create the block by calling the runtime APIs.
                 let client = ClientTemp::new()?;
                 let rt = client.runtime_api();
 
-                rt.initialize_block(&at, &header)
-                    .map_err(|_| failure::err_msg(""))?;
+                rt.initialize_block(&at, &header).map_err(|err| {
+                    failure::err_msg(format!("Failed to initialize block: {}", err))
+                })?;
 
                 for extr in &extrinsics {
-                    let apply_result = rt
-                        .apply_extrinsic(&at, extr.clone())
-                        .map_err(|_| failure::err_msg(""))?;
+                    let apply_result = rt.apply_extrinsic(&at, extr.clone()).map_err(|err| {
+                        failure::err_msg(format!("Failed to apply extrinsic: {}", err))
+                    })?;
 
                     if let Err(validity) = apply_result {
                         if validity.exhausted_resources() {
@@ -103,8 +105,9 @@ impl BlockCmd {
                 for block in blocks {
                     let at = BlockId::Hash(block.header.parent_hash.clone().try_into()?);
 
-                    rt.execute_block(&at, block.try_into()?)
-                        .map_err(|_| failure::err_msg(""))?;
+                    rt.execute_block(&at, block.try_into()?).map_err(|err| {
+                        failure::err_msg(format!("Failed to execute block: {}", err))
+                    })?;
                 }
 
                 Ok(BlockCmdResult::ExecuteBlocks)

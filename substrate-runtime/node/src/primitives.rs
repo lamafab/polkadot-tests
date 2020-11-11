@@ -66,7 +66,7 @@ impl FromStr for RawBlock {
     type Err = failure::Error;
 
     fn from_str(val: &str) -> Result<Self> {
-        Ok(RawBlock(String::from_utf8(hex::decode(val)?)?))
+        Ok(RawBlock(String::from_utf8(hex::decode(&val)?)?))
     }
 }
 
@@ -80,12 +80,11 @@ impl TryFrom<RawBlock> for Block {
 
 impl From<Block> for RawBlock {
     fn from(val: Block) -> Self {
-        RawBlock(hex::encode(val.encode()))
+        RawBlock(hex::encode(&val.encode()))
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtTestLayout<T> {
     pub name: String,
     #[serde(rename = "type")]
@@ -102,6 +101,7 @@ impl TryFrom<TxtHash> for H256 {
     type Error = failure::Error;
 
     fn try_from(val: TxtHash) -> Result<Self> {
+        println!(">> {}", val.0);
         Ok(H256::from_slice(&hex::decode(&val.0.replace("0x", ""))?))
     }
 }
@@ -118,7 +118,6 @@ impl TryFrom<TxtBlockNumber> for BlockNumber {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtExtrinsic(String);
 
 impl TryFrom<TxtExtrinsic> for UncheckedExtrinsic {
@@ -134,7 +133,6 @@ impl TryFrom<TxtExtrinsic> for UncheckedExtrinsic {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtBlock {
     #[structopt(flatten)]
     pub header: TxtHeader,
@@ -146,7 +144,7 @@ impl TxtBlock {
     // Convert relevant fields into runtime native types.
     pub fn prep(mut self) -> Result<(BlockId, Header, Vec<UncheckedExtrinsic>)> {
         // Convert into runtime types.
-        let at = BlockId::Hash(mem::take(&mut self.header.parent_hash).try_into()?);
+        let at = BlockId::Hash(self.header.parent_hash.clone().try_into()?);
         let header = mem::take(&mut self.header).try_into()?;
         let extrinsics = mem::take(&mut self.extrinsics)
             .into_iter()
@@ -173,7 +171,6 @@ impl TryFrom<TxtBlock> for Block {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtHeader {
     #[structopt(short, long)]
     pub parent_hash: TxtHash,
@@ -188,7 +185,6 @@ pub struct TxtHeader {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtDigest {
     pub logs: Vec<String>,
 }
