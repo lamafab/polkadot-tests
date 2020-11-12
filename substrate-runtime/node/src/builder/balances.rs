@@ -2,7 +2,7 @@ use super::create_tx;
 use crate::builder::genesis::get_account_id_from_seed;
 use crate::executor::ClientInMem;
 use crate::primitives::runtime::{Balance, Call};
-use crate::primitives::{ExtrinsicSigner, RawExtrinsic, TxtAccountSeed};
+use crate::primitives::{ExtrinsicSigner, RawExtrinsic, TxtAccountSeed, TxtChainSpec};
 use crate::Result;
 use pallet_balances::Call as BalancesCall;
 use sp_core::crypto::Pair;
@@ -47,6 +47,8 @@ impl PalletBalancesCmd {
 
 #[derive(Debug, Clone, StructOpt, Serialize, Deserialize)]
 pub struct TransferDetails {
+    #[structopt(short, long)]
+    genesis: Option<TxtChainSpec>,
     #[structopt(short, long)]
     from: TxtAccountSeed,
     #[structopt(short, long)]

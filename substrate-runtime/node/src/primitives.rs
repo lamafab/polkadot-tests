@@ -51,6 +51,14 @@ pub struct GenericJson(HashMap<String, serde_json::Value>);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TxtChainSpec(GenericJson);
 
+impl FromStr for TxtChainSpec {
+    type Err = failure::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(TxtChainSpec(serde_json::from_str(s)?))
+    }
+}
+
 impl TryFrom<ChainSpec> for TxtChainSpec {
     type Error = failure::Error;
 
