@@ -73,12 +73,15 @@ mod tests {
 
     #[test]
     fn genesis() {
-        ToolSpec::new(r#"
+        ToolSpec::new(
+            r#"
             - name: Create genesis
               genesis:
                 - alice
                 - bob
                 - eve
-        "#).unwrap()
+        "#,
+        )
+        .unwrap()
     }
 }

@@ -7,6 +7,7 @@ use sp_core::crypto::Pair;
 use sp_core::sr25519;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
+use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::str::FromStr;
@@ -45,15 +46,20 @@ from_str!(
 pub type ChainSpec = GenericChainSpec<runtime::GenesisConfig>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TxtChainSpec(String);
+pub struct GenericJson(HashMap<String, serde_json::Value>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TxtChainSpec(GenericJson);
 
 impl TryFrom<ChainSpec> for TxtChainSpec {
     type Error = failure::Error;
 
     fn try_from(value: ChainSpec) -> Result<Self> {
-        Ok(TxtChainSpec(value.as_json(false).map_err(|err| {
-            failure::err_msg(format!("Failed to parse chain spec as json: {}", err))
-        })?))
+        Ok(TxtChainSpec(serde_json::from_str(
+            &value.as_json(false).map_err(|err| {
+                failure::err_msg(format!("Failed to parse chain spec as json: {}", err))
+            })?,
+        )?))
     }
 }
 
@@ -61,7 +67,7 @@ impl TryFrom<TxtChainSpec> for ChainSpec {
     type Error = failure::Error;
 
     fn try_from(value: TxtChainSpec) -> Result<Self> {
-        ChainSpec::from_json_bytes(value.0.as_bytes().to_vec()).map_err(|err| {
+        ChainSpec::from_json_bytes(serde_json::to_vec(&value.0)?).map_err(|err| {
             failure::err_msg(format!("Failed to convert bytes into chain spec: {}", err))
         })
     }
