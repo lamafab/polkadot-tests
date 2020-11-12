@@ -52,7 +52,7 @@ impl TryFrom<ChainSpec> for TxtChainSpec {
     type Error = failure::Error;
 
     fn try_from(value: ChainSpec) -> Result<Self> {
-        Ok(TxtChainSpec(value.as_json(true).map_err(|err| {
+        Ok(TxtChainSpec(value.as_json(false).map_err(|err| {
             failure::err_msg(format!("Failed to parse chain spec as json: {}", err))
         })?))
     }
