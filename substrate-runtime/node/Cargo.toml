@@ -14,7 +14,7 @@ name = 'node_template'
 path = 'src/lib.rs'
 
 [[bin]]
-name = 'node-template'
+name = 'toolkit'
 path = 'src/bin/main.rs'
 
 [package.metadata.docs.rs]

@@ -18,7 +18,7 @@ pub mod runtime {
     pub use node_template_runtime::{
         AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber, Call,
         GenesisConfig, GrandpaConfig, Header, Signature, SignedExtra, SudoConfig, SystemConfig,
-        UncheckedExtrinsic, WASM_BINARY,
+        UncheckedExtrinsic, WASM_BINARY, TimestampCall, Runtime,
     };
 }
 
