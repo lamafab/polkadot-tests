@@ -289,7 +289,7 @@ impl<'a> NestedVariable<'a> {
         let index = self.index.get();
         if let Some(var) = self.names.get(index) {
             let split = var.0.split("[").collect::<Vec<&str>>();
-            if let Some(mut dirty_num) = split.get(1) {
+            if let Some(dirty_num) = split.get(1) {
                 self.incr_index();
                 return Some((
                     VariableName(split.get(0).unwrap().to_string()),

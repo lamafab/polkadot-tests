@@ -1,11 +1,11 @@
 use super::create_tx;
 use crate::builder::genesis::get_account_id_from_seed;
 use crate::executor::ClientInMem;
-use crate::primitives::runtime::{Address, Balance, Call};
+use crate::primitives::runtime::{Balance, Call};
 use crate::primitives::{ExtrinsicSigner, RawExtrinsic, TxtAccountSeed};
 use crate::Result;
 use pallet_balances::Call as BalancesCall;
-use sp_core::crypto::{Pair, Public};
+use sp_core::crypto::Pair;
 use std::convert::TryInto;
 use std::str::FromStr;
 use structopt::StructOpt;
