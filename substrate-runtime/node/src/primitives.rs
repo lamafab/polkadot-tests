@@ -17,8 +17,8 @@ pub mod runtime {
     // `AccountId` -> `sp_runtime::AccountId32`
     pub use node_template_runtime::{
         AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber, Call,
-        GenesisConfig, GrandpaConfig, Header, Signature, SignedExtra, SudoConfig, SystemConfig,
-        UncheckedExtrinsic, WASM_BINARY, TimestampCall, Runtime,
+        GenesisConfig, GrandpaConfig, Header, Runtime, Signature, SignedExtra, SudoConfig,
+        SystemConfig, TimestampCall, UncheckedExtrinsic, WASM_BINARY,
     };
 }
 
@@ -195,7 +195,8 @@ impl TxtBlock {
     // Convert relevant fields into runtime native types.
     pub fn prep(mut self) -> Result<(BlockId, Header, Vec<UncheckedExtrinsic>)> {
         // Convert into runtime types.
-        let at = BlockId::Number(self.header.number.clone().try_into()?);
+        let at =
+            BlockId::Number(BlockNumber::try_from(self.header.number.clone())?.saturating_sub(1));
         let header = mem::take(&mut self.header).try_into()?;
         let extrinsics = mem::take(&mut self.extrinsics)
             .into_iter()

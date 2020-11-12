@@ -1,12 +1,12 @@
 use crate::executor::ClientInMem;
-use crate::primitives::runtime::{Block, BlockId, TimestampCall, Runtime};
+use crate::primitives::runtime::{Block, BlockId, Runtime, TimestampCall};
 use crate::primitives::{RawBlock, TxtBlock};
 use crate::Result;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
 use std::convert::{TryFrom, TryInto};
-use structopt::StructOpt;
 use std::time::{SystemTime, UNIX_EPOCH};
+use structopt::StructOpt;
 
 fn unix_time() -> u64 {
     SystemTime::now()
@@ -70,6 +70,10 @@ impl BlockCmd {
                     TimestampCall::set::<Runtime>(unix_time());
                     Ok(None)
                 })?;
+
+                println!(">> {:?}", at);
+                println!(">> {:?}", header);
+                println!(">> {:?}", extrinsics);
 
                 rt.initialize_block(&at, &header).map_err(|err| {
                     failure::err_msg(format!("Failed to initialize block: {}", err))
