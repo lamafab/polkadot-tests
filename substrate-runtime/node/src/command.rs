@@ -30,7 +30,9 @@ pub fn run() -> Result<()> {
     }
 
     match cli.subcommand {
-        Some(Subcommand::PalletBalances(cmd)) => { cmd.run()?; },
+        Some(Subcommand::PalletBalances(cmd)) => {
+            cmd.run()?;
+        }
         _ => {}
     };
 

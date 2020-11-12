@@ -12,7 +12,7 @@ pub struct ToolSpec;
 impl ToolSpec {
     #[rustfmt::skip]
     pub fn new(yaml: &str) -> Result<()> {
-        let proc = Processor::new(yaml)?;
+        let mut proc = Processor::new(yaml)?;
 
         for task in proc.tasks() {
             match task.task_type()? {

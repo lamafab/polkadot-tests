@@ -26,19 +26,27 @@ impl Processor {
             tasks: tasks,
         })
     }
-    pub fn tasks(&self) -> &Vec<Task> {
-        &self.tasks
+    pub fn tasks(&self) -> Vec<Task> {
+        // TODO: This should be done without cloning, but is currently
+        // implemented in order to acquire a mutable call to `Processor::run`
+        // from within `ToolSpec` (module root).
+        self.tasks.clone()
     }
-    pub fn run<T: DeserializeOwned, R: Serialize, F: Fn(T) -> Result<R>>(
-        &self,
-        task: &Task,
+    pub fn run<T: DeserializeOwned, R: Serialize + Clone, F: Fn(T) -> Result<R>>(
+        &mut self,
+        task: Task,
         f: F,
     ) -> Result<()> {
-        let tasks = task_parser(&self.global_var_pool, &task.properties)?;
+        let (tasks, register) = task_parser(&self.global_var_pool, &task.properties)?;
         let mut results = vec![];
 
         for task in tasks {
             results.push(f(task)?);
+        }
+
+        if let Some(var_name) = register {
+            self.global_var_pool
+                .insert_named(var_name, serde_yaml::to_value(results.clone())?);
         }
 
         println!(
@@ -98,8 +106,8 @@ fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
 fn task_parser<T: DeserializeOwned>(
     global_var_pool: &VarPool,
     properties: &HashMap<KeyType, serde_yaml::Value>,
-) -> Result<Vec<T>> {
-    let mut _register = false;
+) -> Result<(Vec<T>, Option<VariableName>)> {
+    let mut register = None;
 
     let mut local_var_pool = VarPool::new();
     let converter = VariableProcessor::new(global_var_pool, &local_var_pool, 0);
@@ -111,7 +119,9 @@ fn task_parser<T: DeserializeOwned>(
         match key {
             KeyType::TaskType(_) => {}
             KeyType::Keyword(keyword) => match keyword {
-                Keyword::Register => _register = true,
+                Keyword::Register => {
+                    register = Some(serde_yaml::from_value::<VariableName>(val.clone())?)
+                }
                 Keyword::Loop => {
                     // Ensure only one `loop:` entry is present per task.
                     if loop_vars.is_none() {
@@ -177,7 +187,7 @@ fn task_parser<T: DeserializeOwned>(
         }
     }
 
-    Ok(expanded)
+    Ok((expanded, register))
 }
 
 struct VariableProcessor<'a> {
@@ -281,7 +291,10 @@ impl<'a> NestedVariable<'a> {
             let split = var.0.split("[").collect::<Vec<&str>>();
             if let Some(mut dirty_num) = split.get(1) {
                 self.incr_index();
-                return Some((VariableName(split.get(0).unwrap().to_string()), str::parse::<usize>(&dirty_num[..dirty_num.len() - 1]).ok()?))
+                return Some((
+                    VariableName(split.get(0).unwrap().to_string()),
+                    str::parse::<usize>(&dirty_num[..dirty_num.len() - 1]).ok()?,
+                ));
             }
         }
 
@@ -315,6 +328,9 @@ impl VarPool {
         for (name, val) in vars.0 {
             self.pool.0.insert(name, val);
         }
+    }
+    fn insert_named(&mut self, name: VariableName, value: serde_yaml::Value) {
+        self.insert(VarType([(name, value)].iter().cloned().collect()))
     }
     fn insert_loop(&mut self, pool: LoopType) {
         self.loop_pool = pool;
@@ -456,7 +472,7 @@ mod tests {
 
     fn parse<T: DeserializeOwned>(input: &str) -> Vec<T> {
         let (var_pool, tasks) = global_parser(input).unwrap();
-        task_parser(&var_pool, &tasks[0].properties).unwrap()
+        task_parser(&var_pool, &tasks[0].properties).unwrap().0
     }
 
     #[test]
