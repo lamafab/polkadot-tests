@@ -2,14 +2,14 @@ use crate::primitives::runtime::{
     AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
     SystemConfig, WASM_BINARY,
 };
-use crate::primitives::{ChainSpec, ExtrinsicSigner, TxtAccountSeed};
+use crate::primitives::{ChainSpec, ExtrinsicSigner, TxtAccountSeed, TxtChainSpec};
 use crate::Result;
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -41,15 +41,16 @@ enum CallCmd {
 }
 
 impl GenesisCmd {
-    pub fn run(self) -> Result<ChainSpec> {
+    pub fn run(self) -> Result<TxtChainSpec> {
         match self.call {
-            CallCmd::Default => gen_chain_spec_default(),
+            CallCmd::Default => gen_chain_spec_default()?.try_into(),
             CallCmd::Accounts { accounts } => gen_chain_spec_with_accounts(
                 accounts
                     .into_iter()
                     .map(|seed| ExtrinsicSigner::try_from(seed).map(|pair| pair.public().into()))
                     .collect::<Result<Vec<AccountId>>>()?,
-            ),
+            )?
+            .try_into(),
         }
     }
 }

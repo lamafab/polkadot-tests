@@ -457,6 +457,8 @@ pub enum TaskType {
     PalletBalances,
     #[serde(rename = "execute")]
     Execute,
+    #[serde(rename = "genesis")]
+    Genesis,
     #[cfg(test)]
     #[serde(rename = "person")]
     Person,

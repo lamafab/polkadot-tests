@@ -12,6 +12,7 @@ use sp_core::testing::TaskExecutor;
 use sp_runtime::generic::BlockId;
 use sp_runtime::BuildStorage;
 use sp_state_machine::InspectState;
+use std::convert::TryFrom;
 
 // Native executor instance.
 native_executor_instance!(
@@ -37,8 +38,7 @@ impl ClientInMem {
         Ok(ClientInMem {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
-                &GenesisCmd::default()
-                    .run()?
+                &ChainSpec::try_from(GenesisCmd::default().run()?)?
                     .build_storage()
                     .map_err(|_| failure::err_msg("Failed to build temporary chain-spec"))?,
                 None,

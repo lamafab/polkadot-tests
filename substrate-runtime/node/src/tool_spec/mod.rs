@@ -1,7 +1,7 @@
 use crate::builder::balances::TransferDetails;
 use crate::builder::blocks::BlockCmdResult;
-use crate::builder::{BlockCmd, PalletBalancesCmd};
-use crate::primitives::{RawBlock, RawExtrinsic, TxtBlock};
+use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
+use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
 use crate::Result;
 use processor::{Processor, TaskType};
 
@@ -23,8 +23,11 @@ impl ToolSpec {
                     BlockCmd::execute_block(raw_blocks).run()
                 }),
                 TaskType::PalletBalances => proc.run::<TransferDetails, RawExtrinsic, _>(task, |details| {
-                        PalletBalancesCmd::transfer(details).run()
-                    }),
+                    PalletBalancesCmd::transfer(details).run()
+                }),
+                TaskType::Genesis => proc.run::<Vec<TxtAccountSeed>, TxtChainSpec, _>(task, |accounts| {
+                    GenesisCmd::accounts(accounts).run()
+                }),
                 #[cfg(test)]
                 _ => panic!()
             }?;

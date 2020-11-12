@@ -45,6 +45,29 @@ from_str!(
 
 pub type ChainSpec = GenericChainSpec<runtime::GenesisConfig>;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TxtChainSpec(String);
+
+impl TryFrom<ChainSpec> for TxtChainSpec {
+    type Error = failure::Error;
+
+    fn try_from(value: ChainSpec) -> Result<Self> {
+        Ok(TxtChainSpec(value.as_json(true).map_err(|err| {
+            failure::err_msg(format!("Failed to parse chain spec as json: {}", err))
+        })?))
+    }
+}
+
+impl TryFrom<TxtChainSpec> for ChainSpec {
+    type Error = failure::Error;
+
+    fn try_from(value: TxtChainSpec) -> Result<Self> {
+        ChainSpec::from_json_bytes(value.0.as_bytes().to_vec()).map_err(|err| {
+            failure::err_msg(format!("Failed to convert bytes into chain spec: {}", err))
+        })
+    }
+}
+
 // TODO: Those should be generic
 pub type ExtrinsicSigner = sr25519::Pair;
 
