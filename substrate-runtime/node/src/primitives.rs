@@ -93,12 +93,23 @@ impl TxtAccountSeed {
     }
 }
 
+const SAMPLE_ACCOUNTS: [&'static str; 4] = ["alice", "bob", "dave", "eve"];
+
 impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
     type Error = failure::Error;
 
-    fn try_from(val: TxtAccountSeed) -> Result<Self> {
-        Ok(ExtrinsicSigner::from_string(&format!("//{}", val.0), None)
-            .map_err(|_| failure::err_msg(format!("Failed to convert seed to private key")))?)
+    fn try_from(value: TxtAccountSeed) -> Result<Self> {
+        let input = value.0.to_ascii_lowercase();
+        if SAMPLE_ACCOUNTS.contains(&input.as_str()) {
+            Ok(ExtrinsicSigner::from_string(&format!("//{}", input), None)
+                .map_err(|_| failure::err_msg(format!("Invalid seed phrase")))?)
+        } else {
+            Ok(ExtrinsicSigner::from_seed(
+                &hex::decode(input)?
+                    .try_into()
+                    .map_err(|_| failure::err_msg("Invalid seed phrase"))?,
+            ))
+        }
     }
 }
 
@@ -106,7 +117,7 @@ impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
 pub struct RawExtrinsic(String);
 
 impl RawExtrinsic {
-    pub fn as_str(&self) -> &str{
+    pub fn as_str(&self) -> &str {
         &self.0
     }
 }

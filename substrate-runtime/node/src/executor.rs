@@ -2,7 +2,7 @@ use super::Result;
 use crate::builder::GenesisCmd;
 use crate::primitives::runtime::Block;
 use crate::primitives::ChainSpec;
-use node_template_runtime::{RuntimeApi, RuntimeApiImpl, BlockId};
+use node_template_runtime::{BlockId, RuntimeApi, RuntimeApiImpl};
 use sc_client_api::in_mem::Backend;
 use sc_executor::native_executor_instance;
 use sc_executor::{NativeExecutor, WasmExecutionMethod};
@@ -64,7 +64,11 @@ impl ClientInMem {
             .map_err(|_| failure::err_msg("failed to create in-memory client"))?,
         })
     }
-    pub fn exec_context<T, F: FnOnce() -> Result<Option<T>>>(&self, at: &BlockId, f: F) -> Result<Option<T>> {
+    pub fn exec_context<T, F: FnOnce() -> Result<Option<T>>>(
+        &self,
+        at: &BlockId,
+        f: F,
+    ) -> Result<Option<T>> {
         let mut res = Ok(None);
         self.client
             .state_at(at)
