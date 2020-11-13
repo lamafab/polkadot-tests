@@ -9,8 +9,13 @@ name = 'node-template'
 repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
 version = '2.0.0'
 
+[lib]
+name = 'node_template'
+path = 'src/lib.rs'
+
 [[bin]]
-name = 'node-template'
+name = 'toolkit'
+path = 'src/bin/main.rs'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -27,6 +32,7 @@ hex = '0.4.2'
 failure = "0.1.8"
 codec = { package = "parity-scale-codec", version = "1.3.1" }
 rand = "0.7.3"
+serde_yaml = "0.8.14"
 
 # local dependencies
 node-template-runtime = { path = '../runtime', version = '2.0.0' }
@@ -38,6 +44,7 @@ frame-system = "2.0.0"
 pallet-balances = '2.0.0'
 pallet-transaction-payment-rpc = '2.0.0'
 pallet-transaction-payment = "2.0.0"
+pallet-timestamp = "2.0.0"
 sc-basic-authorship = '0.8.0'
 sc-cli = { features = ['wasmtime'], version = '0.8.0' }
 sc-client-api = '2.0.0'

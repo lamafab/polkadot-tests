@@ -16,55 +16,25 @@
 // limitations under the License.
 
 use crate::cli::{Cli, Subcommand};
-use crate::{chain_spec, Result};
-use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
-
-impl SubstrateCli for Cli {
-    fn impl_name() -> String {
-        "Substrate Node".into()
-    }
-
-    fn impl_version() -> String {
-        env!("SUBSTRATE_CLI_IMPL_VERSION").into()
-    }
-
-    fn description() -> String {
-        env!("CARGO_PKG_DESCRIPTION").into()
-    }
-
-    fn author() -> String {
-        env!("CARGO_PKG_AUTHORS").into()
-    }
-
-    fn support_url() -> String {
-        "support.anonymous.an".into()
-    }
-
-    fn copyright_start_year() -> i32 {
-        2017
-    }
-
-    fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-        Ok(match id {
-            "dev" => Box::new(chain_spec::gen_chain_spec_thin()?),
-            path => Box::new(chain_spec::ChainSpec::from_json_file(
-                std::path::PathBuf::from(path),
-            )?),
-        })
-    }
-
-    fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-        &node_template_runtime::VERSION
-    }
-}
+use crate::tool_spec::ToolSpec;
+use crate::Result;
+use std::fs;
+use structopt::StructOpt;
 
 /// Parse and run command line arguments
 pub fn run() -> Result<()> {
     let cli = Cli::from_args();
 
-    match cli.subcommand {
-        Subcommand::PalletBalances(cmd) => cmd.run().map(|extr| println!("{}", extr))?,
+    if let Some(path) = cli.spec_path {
+        ToolSpec::new(&fs::read_to_string(path)?)?;
     }
+
+    match cli.subcommand {
+        Some(Subcommand::PalletBalances(cmd)) => {
+            cmd.run().map(|out| println!("{}", out.as_str()))?;
+        }
+        _ => {}
+    };
 
     Ok(())
 }

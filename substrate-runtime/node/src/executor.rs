@@ -1,35 +1,43 @@
-use super::builder::Block;
-use super::chain_spec::{gen_chain_spec_thin, ChainSpec};
-use super::service::Executor;
 use super::Result;
-use node_template_runtime::{RuntimeApi, RuntimeApiImpl, RuntimeFunction, WASM_BINARY};
+use crate::builder::GenesisCmd;
+use crate::primitives::runtime::Block;
+use crate::primitives::ChainSpec;
+use node_template_runtime::{RuntimeApi, RuntimeApiImpl, BlockId};
 use sc_client_api::in_mem::Backend;
-use sc_executor::{CallInWasm, NativeExecutor, WasmExecutionMethod, WasmExecutor};
+use sc_executor::native_executor_instance;
+use sc_executor::{NativeExecutor, WasmExecutionMethod};
 use sc_service::client::{new_in_mem, Client, ClientConfig, LocalCallExecutor};
 use sp_api::{ApiRef, ProvideRuntimeApi};
 use sp_core::testing::TaskExecutor;
-use sp_runtime::generic::BlockId;
 use sp_runtime::BuildStorage;
 use sp_state_machine::InspectState;
+use std::convert::TryFrom;
 
-type ClientTempDef = Client<
+// Native executor instance.
+native_executor_instance!(
+    pub Executor,
+    node_template_runtime::api::dispatch,
+    node_template_runtime::native_version,
+    frame_benchmarking::benchmarking::HostFunctions,
+);
+
+type ClientInMemDef = Client<
     Backend<Block>,
     LocalCallExecutor<Backend<Block>, NativeExecutor<Executor>>,
     Block,
     RuntimeApi,
 >;
 
-pub struct ClientTemp {
-    client: ClientTempDef,
+pub struct ClientInMem {
+    client: ClientInMemDef,
 }
 
-impl ClientTemp {
-    pub fn new() -> Result<ClientTemp> {
-        Ok(ClientTemp {
+impl ClientInMem {
+    pub fn new() -> Result<ClientInMem> {
+        Ok(ClientInMem {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
-                &gen_chain_spec_thin()
-                    .map_err(|_| failure::err_msg("Failed to build temporary chain-spec"))?
+                &ChainSpec::try_from(GenesisCmd::default().run()?)?
                     .build_storage()
                     .map_err(|_| failure::err_msg("Failed to build temporary chain-spec"))?,
                 None,
@@ -40,8 +48,9 @@ impl ClientTemp {
             .map_err(|_| failure::err_msg("failed to create in-memory client"))?,
         })
     }
-    pub fn new_with_genesis(chain_spec: ChainSpec) -> Result<ClientTemp> {
-        Ok(ClientTemp {
+    #[allow(dead_code)]
+    pub fn new_with_genesis(chain_spec: ChainSpec) -> Result<ClientInMem> {
+        Ok(ClientInMem {
             client: new_in_mem::<_, Block, _, _>(
                 NativeExecutor::<Executor>::new(WasmExecutionMethod::Interpreted, None, 8),
                 &chain_spec
@@ -55,18 +64,18 @@ impl ClientTemp {
             .map_err(|_| failure::err_msg("failed to create in-memory client"))?,
         })
     }
-    pub fn exec_context<T, F: FnOnce() -> Result<Option<T>>>(&self, f: F) -> Result<Option<T>> {
+    pub fn exec_context<T, F: FnOnce() -> Result<Option<T>>>(&self, at: &BlockId, f: F) -> Result<Option<T>> {
         let mut res = Ok(None);
         self.client
-            .state_at(&BlockId::Number(0))
-            .map_err(|_| failure::err_msg(""))?
+            .state_at(at)
+            .map_err(|_| failure::err_msg("Failed to set state"))?
             .inspect_with(|| {
                 res = f();
             });
 
         res
     }
-    pub fn runtime_api<'a>(&'a self) -> ApiRef<'a, RuntimeApiImpl<Block, ClientTempDef>> {
+    pub fn runtime_api<'a>(&'a self) -> ApiRef<'a, RuntimeApiImpl<Block, ClientInMemDef>> {
         self.client.runtime_api()
     }
 }

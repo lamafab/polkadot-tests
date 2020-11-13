@@ -1,16 +1,16 @@
-use super::{create_tx, Address, Balance, Call, UncheckedExtrinsic};
-use crate::chain_spec::CryptoPair;
-use crate::executor::ClientTemp;
+use super::create_tx;
+use crate::builder::genesis::get_account_id_from_seed;
+use crate::executor::ClientInMem;
+use crate::primitives::runtime::{Balance, Call, BlockId};
+use crate::primitives::{ExtrinsicSigner, RawExtrinsic, TxtAccountSeed, TxtChainSpec};
 use crate::Result;
-use codec::Encode;
 use pallet_balances::Call as BalancesCall;
 use sp_core::crypto::Pair;
-
-use std::fmt;
+use std::convert::TryInto;
 use std::str::FromStr;
 use structopt::StructOpt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct RawPrivateKey(Vec<u8>);
 
 impl FromStr for RawPrivateKey {
@@ -31,61 +31,54 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-impl From<RawPrivateKey> for CryptoPair {
-    fn from(val: RawPrivateKey) -> Self {
-        let mut seed = [0; 32];
-        seed.copy_from_slice(&val.0);
-        seed.into()
-    }
-}
-
-#[derive(Debug)]
-pub struct RawExtrinsic(Vec<u8>);
-
-impl fmt::Display for RawExtrinsic {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(&self.0))
-    }
-}
-
-impl From<Vec<u8>> for RawExtrinsic {
-    fn from(val: Vec<u8>) -> Self {
-        RawExtrinsic(val)
-    }
-}
-
-impl From<UncheckedExtrinsic> for RawExtrinsic {
-    fn from(val: UncheckedExtrinsic) -> Self {
-        RawExtrinsic::from(val.encode())
-    }
-}
-
 #[derive(Debug, StructOpt)]
 pub struct PalletBalancesCmd {
     #[structopt(subcommand)]
     call: CallCmd,
 }
 
+impl PalletBalancesCmd {
+    pub fn transfer(details: TransferDetails) -> Self {
+        PalletBalancesCmd {
+            call: CallCmd::Transfer { details },
+        }
+    }
+}
+
+#[derive(Debug, Clone, StructOpt, Serialize, Deserialize)]
+pub struct TransferDetails {
+    #[structopt(short, long)]
+    genesis: Option<TxtChainSpec>,
+    #[structopt(short, long)]
+    from: TxtAccountSeed,
+    #[structopt(short, long)]
+    to: TxtAccountSeed,
+    #[structopt(short, long)]
+    balance: Balance,
+}
+
 #[derive(Debug, StructOpt)]
 enum CallCmd {
     Transfer {
-        #[structopt(short, long)]
-        from: RawPrivateKey,
-        #[structopt(short, long)]
-        to: Address,
-        #[structopt(short, long)]
-        balance: Balance,
+        #[structopt(flatten)]
+        details: TransferDetails,
     },
 }
 
 impl PalletBalancesCmd {
     pub fn run(self) -> Result<RawExtrinsic> {
         match self.call {
-            CallCmd::Transfer { from, to, balance } => ClientTemp::new()?
-                .exec_context(|| {
-                    create_tx(
-                        from.into(),
-                        Call::Balances(BalancesCall::transfer(to.into(), balance)),
+            CallCmd::Transfer { details } => ClientInMem::new()?
+                .exec_context(&BlockId::Number(0), || {
+                    create_tx::<ExtrinsicSigner>(
+                        details.from.try_into()?,
+                        Call::Balances(BalancesCall::transfer(
+                            get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
+                                details.to.as_str(),
+                            )
+                            .into(),
+                            details.balance,
+                        )),
                         0,
                     )
                     .map(|t| RawExtrinsic::from(t))

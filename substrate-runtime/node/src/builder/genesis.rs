@@ -1,43 +1,56 @@
-use node_template_runtime::{
+use crate::primitives::runtime::{
     AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
     SystemConfig, WASM_BINARY,
 };
+use crate::primitives::{ChainSpec, ExtrinsicSigner, TxtAccountSeed, TxtChainSpec};
+use crate::Result;
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
-use sp_runtime::MultiSignature;
+use std::convert::{TryFrom, TryInto};
+use structopt::StructOpt;
 
-// The URL for the telemetry server.
-// const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
-
-/// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
-
-pub struct CryptoPair {
-    pair: sr25519::Pair,
+#[derive(Debug, StructOpt)]
+pub struct GenesisCmd {
+    #[structopt(subcommand)]
+    call: CallCmd,
 }
 
-impl CryptoPair {
-    pub fn new() -> Self {
-        Self::from(rand::random::<[u8; 32]>())
+impl GenesisCmd {
+    pub fn default() -> Self {
+        GenesisCmd {
+            call: CallCmd::Default,
+        }
     }
-    pub fn public(&self) -> sr25519::Public {
-        self.pair.public()
-    }
-    pub fn account_id(&self) -> AccountId {
-        self.pair.public().into()
-    }
-    pub fn sign(&self, message: &[u8]) -> MultiSignature {
-        self.pair.sign(message).into()
+    pub fn accounts(accounts: Vec<TxtAccountSeed>) -> Self {
+        GenesisCmd {
+            call: CallCmd::Accounts { accounts: accounts },
+        }
     }
 }
 
-impl From<[u8; 32]> for CryptoPair {
-    fn from(val: [u8; 32]) -> Self {
-        CryptoPair {
-            pair: sr25519::Pair::from_seed(&val),
+#[derive(Debug, StructOpt)]
+enum CallCmd {
+    Default,
+    Accounts {
+        #[structopt(short, long)]
+        accounts: Vec<TxtAccountSeed>,
+    },
+}
+
+impl GenesisCmd {
+    pub fn run(self) -> Result<TxtChainSpec> {
+        match self.call {
+            CallCmd::Default => gen_chain_spec_default()?.try_into(),
+            CallCmd::Accounts { accounts } => gen_chain_spec_with_accounts(
+                accounts
+                    .into_iter()
+                    .map(|seed| ExtrinsicSigner::try_from(seed).map(|pair| pair.public().into()))
+                    .collect::<Result<Vec<AccountId>>>()?,
+            )?
+            .try_into(),
         }
     }
 }
@@ -64,14 +77,17 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
     (get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
 }
 
-pub fn gen_chain_spec_thin() -> Result<ChainSpec, String> {
-    gen_chain_spec_with_accounts(vec![])
+pub fn gen_chain_spec_default() -> Result<ChainSpec> {
+    gen_chain_spec_with_accounts(vec![
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("alice"),
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("bob"),
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("dave"),
+    ])
 }
 
-pub fn gen_chain_spec_with_accounts(
-    _endowed_accounts: Vec<AccountId>,
-) -> Result<ChainSpec, String> {
-    let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+pub fn gen_chain_spec_with_accounts(endowed_accounts: Vec<AccountId>) -> Result<ChainSpec> {
+    let wasm_binary =
+        WASM_BINARY.ok_or(failure::err_msg("Development wasm binary not available"))?;
 
     Ok(ChainSpec::from_genesis(
         // Name
@@ -83,15 +99,11 @@ pub fn gen_chain_spec_with_accounts(
             testnet_genesis(
                 wasm_binary,
                 // Initial PoA authorities
-                vec![authority_keys_from_seed("Alice")],
+                vec![authority_keys_from_seed("alice")],
                 // Sudo account
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
+                get_account_id_from_seed::<sr25519::Public>("alice"),
                 // Pre-funded accounts
-                vec![
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    get_account_id_from_seed::<sr25519::Public>("Bob"),
-                    get_account_id_from_seed::<sr25519::Public>("Charlie"),
-                ],
+                &endowed_accounts,
                 true,
             )
         },
@@ -113,7 +125,7 @@ fn testnet_genesis(
     wasm_binary: &[u8],
     initial_authorities: Vec<(AuraId, GrandpaId)>,
     root_key: AccountId,
-    endowed_accounts: Vec<AccountId>,
+    endowed_accounts: &Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
     GenesisConfig {

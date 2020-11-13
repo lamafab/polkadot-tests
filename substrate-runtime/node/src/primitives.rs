@@ -1,12 +1,26 @@
-use super::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
 use crate::Result;
 use codec::Decode;
+use codec::Encode;
+use runtime::{Block, BlockId, BlockNumber, Header, UncheckedExtrinsic};
+use sc_service::GenericChainSpec;
+use sp_core::crypto::Pair;
+use sp_core::sr25519;
 use sp_core::H256;
 use sp_runtime::generic::{Digest, DigestItem};
+use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::str::FromStr;
 use structopt::StructOpt;
+
+pub mod runtime {
+    // `AccountId` -> `sp_runtime::AccountId32`
+    pub use node_template_runtime::{
+        AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber, Call,
+        GenesisConfig, GrandpaConfig, Header, Runtime, Signature, SignedExtra, SudoConfig,
+        SystemConfig, TimestampCall, UncheckedExtrinsic, WASM_BINARY,
+    };
+}
 
 macro_rules! from_str {
     ($($name:ident)*) => {
@@ -26,16 +40,91 @@ from_str!(
     TxtHash
     TxtBlockNumber
     TxtExtrinsic
+    TxtAccountSeed
 );
 
+pub type ChainSpec = GenericChainSpec<runtime::GenesisConfig>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GenericJson(HashMap<String, serde_json::Value>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TxtChainSpec(GenericJson);
+
+impl FromStr for TxtChainSpec {
+    type Err = failure::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(TxtChainSpec(serde_json::from_str(s)?))
+    }
+}
+
+impl TryFrom<ChainSpec> for TxtChainSpec {
+    type Error = failure::Error;
+
+    fn try_from(value: ChainSpec) -> Result<Self> {
+        Ok(TxtChainSpec(serde_json::from_str(
+            &value.as_json(false).map_err(|err| {
+                failure::err_msg(format!("Failed to parse chain spec as json: {}", err))
+            })?,
+        )?))
+    }
+}
+
+impl TryFrom<TxtChainSpec> for ChainSpec {
+    type Error = failure::Error;
+
+    fn try_from(value: TxtChainSpec) -> Result<Self> {
+        ChainSpec::from_json_bytes(serde_json::to_vec(&value.0)?).map_err(|err| {
+            failure::err_msg(format!("Failed to convert bytes into chain spec: {}", err))
+        })
+    }
+}
+
+// TODO: Those should be generic
+pub type ExtrinsicSigner = sr25519::Pair;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TxtAccountSeed(String);
+
+impl TxtAccountSeed {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
+    type Error = failure::Error;
+
+    fn try_from(val: TxtAccountSeed) -> Result<Self> {
+        Ok(ExtrinsicSigner::from_string(&format!("//{}", val.0), None)
+            .map_err(|_| failure::err_msg(format!("Failed to convert seed to private key")))?)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RawExtrinsic(String);
+
+impl RawExtrinsic {
+    pub fn as_str(&self) -> &str{
+        &self.0
+    }
+}
+
+impl From<UncheckedExtrinsic> for RawExtrinsic {
+    fn from(val: UncheckedExtrinsic) -> Self {
+        RawExtrinsic(hex::encode(val.encode()))
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct RawBlock(Vec<u8>);
+pub struct RawBlock(String);
 
 impl FromStr for RawBlock {
     type Err = failure::Error;
 
     fn from_str(val: &str) -> Result<Self> {
-        Ok(RawBlock(hex::decode(&mut val.as_bytes())?))
+        Ok(RawBlock(String::from_utf8(hex::decode(&val)?)?))
     }
 }
 
@@ -43,12 +132,17 @@ impl TryFrom<RawBlock> for Block {
     type Error = failure::Error;
 
     fn try_from(val: RawBlock) -> Result<Self> {
-        Block::decode(&mut val.0.as_slice()).map_err(|err| err.into())
+        Block::decode(&mut val.0.as_bytes()).map_err(|err| err.into())
+    }
+}
+
+impl From<Block> for RawBlock {
+    fn from(val: Block) -> Self {
+        RawBlock(hex::encode(&val.encode()))
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtTestLayout<T> {
     pub name: String,
     #[serde(rename = "type")]
@@ -81,7 +175,6 @@ impl TryFrom<TxtBlockNumber> for BlockNumber {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtExtrinsic(String);
 
 impl TryFrom<TxtExtrinsic> for UncheckedExtrinsic {
@@ -97,7 +190,6 @@ impl TryFrom<TxtExtrinsic> for UncheckedExtrinsic {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtBlock {
     #[structopt(flatten)]
     pub header: TxtHeader,
@@ -109,7 +201,8 @@ impl TxtBlock {
     // Convert relevant fields into runtime native types.
     pub fn prep(mut self) -> Result<(BlockId, Header, Vec<UncheckedExtrinsic>)> {
         // Convert into runtime types.
-        let at = BlockId::Hash(mem::take(&mut self.header.parent_hash).try_into()?);
+        let at =
+            BlockId::Number(BlockNumber::try_from(self.header.number.clone())?.saturating_sub(1));
         let header = mem::take(&mut self.header).try_into()?;
         let extrinsics = mem::take(&mut self.extrinsics)
             .into_iter()
@@ -136,7 +229,6 @@ impl TryFrom<TxtBlock> for Block {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtHeader {
     #[structopt(short, long)]
     pub parent_hash: TxtHash,
@@ -151,7 +243,6 @@ pub struct TxtHeader {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
-#[serde(rename_all = "camelCase")]
 pub struct TxtDigest {
     pub logs: Vec<String>,
 }
