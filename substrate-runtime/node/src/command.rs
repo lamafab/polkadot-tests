@@ -31,7 +31,7 @@ pub fn run() -> Result<()> {
 
     match cli.subcommand {
         Some(Subcommand::PalletBalances(cmd)) => {
-            cmd.run()?;
+            cmd.run().map(|out| println!("{}", out.as_str()))?;
         }
         _ => {}
     };
