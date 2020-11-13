@@ -1,7 +1,7 @@
 use super::create_tx;
 use crate::builder::genesis::get_account_id_from_seed;
 use crate::executor::ClientInMem;
-use crate::primitives::runtime::{Balance, Call};
+use crate::primitives::runtime::{Balance, Call, BlockId};
 use crate::primitives::{ExtrinsicSigner, RawExtrinsic, TxtAccountSeed, TxtChainSpec};
 use crate::Result;
 use pallet_balances::Call as BalancesCall;
@@ -69,7 +69,7 @@ impl PalletBalancesCmd {
     pub fn run(self) -> Result<RawExtrinsic> {
         match self.call {
             CallCmd::Transfer { details } => ClientInMem::new()?
-                .exec_context(|| {
+                .exec_context(&BlockId::Number(0), || {
                     create_tx::<ExtrinsicSigner>(
                         details.from.try_into()?,
                         Call::Balances(BalancesCall::transfer(

@@ -1,19 +1,11 @@
 use crate::executor::ClientInMem;
-use crate::primitives::runtime::{Block, BlockId, Runtime, TimestampCall};
+use crate::primitives::runtime::{Block, BlockId};
 use crate::primitives::{RawBlock, TxtBlock};
 use crate::Result;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
 use std::convert::{TryFrom, TryInto};
-use std::time::{SystemTime, UNIX_EPOCH};
 use structopt::StructOpt;
-
-fn unix_time() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
-}
 
 #[derive(Debug, StructOpt)]
 pub struct BlockCmd {
@@ -66,15 +58,6 @@ impl BlockCmd {
                 let client = ClientInMem::new()?;
                 let rt = client.runtime_api();
 
-                client.exec_context::<(), _>(|| {
-                    TimestampCall::set::<Runtime>(unix_time());
-                    Ok(None)
-                })?;
-
-                println!(">> {:?}", at);
-                println!(">> {:?}", header);
-                println!(">> {:?}", extrinsics);
-
                 rt.initialize_block(&at, &header).map_err(|err| {
                     failure::err_msg(format!("Failed to initialize block: {}", err))
                 })?;
@@ -95,7 +78,6 @@ impl BlockCmd {
                     }
                 }
 
-                /*
                 let header = rt
                     .finalize_block(&at)
                     .map_err(|_| failure::err_msg("Failed to finalize block"))?;
@@ -107,8 +89,6 @@ impl BlockCmd {
                     }
                     .into(),
                 ))
-                */
-                unimplemented!()
             }
             CallCmd::ExecuteBlocks { blocks } => {
                 // Create the block by calling the runtime APIs.
