@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate serde;
+#[macro_use]
+extern crate structopt;
 
 mod builder;
 mod cli;

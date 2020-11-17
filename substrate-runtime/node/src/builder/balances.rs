@@ -1,4 +1,4 @@
-use super::create_tx;
+use super::{create_tx, Builder, ModuleName};
 use crate::builder::genesis::get_account_id_from_seed;
 use crate::executor::ClientInMem;
 use crate::primitives::runtime::{Balance, BlockId, RuntimeCall};
@@ -31,26 +31,101 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-#[derive(Debug, StructOpt, Serialize, Deserialize)]
-pub struct PalletBalancesCmd {
-    #[structopt(subcommand)]
-    #[serde(flatten)]
-    call: CallCmd,
+macro_rules! module {
+    (
+        #[$m1:meta]
+        #[serde(rename = $n:expr)]
+        pub struct $struct:ident {
+            $($tt:tt)*
+        }
+
+        #[$m2:meta]
+        enum $enum:ident {
+            $(
+                #[serde(rename = $n2:expr)]
+                $func:ident {
+                    $($tt2:tt)*
+                },
+            )*
+        }
+    ) => {
+        #[$m1]
+        #[serde(rename = $n)]
+        pub struct $struct { $($tt)* }
+
+        #[$m2]
+        enum $enum {
+            $(
+                #[serde(rename = $n2)]
+                $func {
+                    $($tt2)*
+                },
+            )*
+        }
+
+        const MODULE: ModuleName = ModuleName::from($n);
+
+        impl ModuleInfo for $struct {
+            fn module_name(&self) -> &'static ModuleName {
+                &MODULE
+            }
+            fn function_name(&self) -> &'static str {
+                match self.call {
+                    $( $enum::$func { .. } => &$n2, )*
+                }
+            }
+        }
+    };
 }
 
-#[derive(Debug, StructOpt, Serialize, Deserialize)]
-enum CallCmd {
-    #[serde(rename = "transfer")]
-    Transfer {
-        #[structopt(short, long)]
-        genesis: Option<TxtChainSpec>,
-        #[structopt(short, long)]
-        from: TxtAccountSeed,
-        #[structopt(short, long)]
-        to: TxtAccountSeed,
-        #[structopt(short, long)]
-        balance: u64,
-    },
+module!(
+    #[derive(Debug, StructOpt, Serialize, Deserialize)]
+    #[serde(rename = "pallet_balances")]
+    pub struct PalletBalancesCmd {
+        #[structopt(subcommand)]
+        #[serde(flatten)]
+        call: CallCmd,
+    }
+
+    #[derive(Debug, StructOpt, Serialize, Deserialize)]
+    enum CallCmd {
+        #[serde(rename = "transfer")]
+        Transfer {
+            #[structopt(short, long)]
+            genesis: Option<TxtChainSpec>,
+            #[structopt(short, long)]
+            from: TxtAccountSeed,
+            #[structopt(short, long)]
+            to: TxtAccountSeed,
+            #[structopt(short, long)]
+            balance: u64,
+        },
+    }
+);
+
+trait ModuleInfo {
+    fn module_name(&self) -> &'static ModuleName;
+    fn function_name(&self) -> &'static str;
+}
+
+impl Builder for PalletBalancesCmd {
+    type Input = Self;
+    type Output = RawExtrinsic;
+    const MODULE: ModuleName = ModuleName::from("pallet_balances");
+
+    fn function_name(&self) -> ModuleName {
+        use CallCmd::*;
+
+        unimplemented!()
+        /*
+        match self.call {
+            Transfer { .. } => ModuleName::from("transfer")
+        }
+        */
+    }
+    fn run(&self) -> Result<Self::Output> {
+        unimplemented!()
+    }
 }
 
 impl PalletBalancesCmd {

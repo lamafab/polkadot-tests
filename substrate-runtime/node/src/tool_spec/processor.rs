@@ -12,8 +12,10 @@ pub struct Processor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Outcome<Name, Data> {
-    pub name: Name,
+pub struct Outcome<Name, Module, Function, Data> {
+    pub task_name: Option<Name>,
+    pub module: Module,
+    pub function: Function,
     pub data: Data,
 }
 
@@ -37,6 +39,8 @@ impl Processor {
         task: Task,
         f: F,
     ) -> Result<()> {
+        unimplemented!();
+        /*
         let (tasks, register) = task_parser(&self.global_var_pool, &task.properties)?;
         let mut results = vec![];
 
@@ -58,6 +62,7 @@ impl Processor {
         );
 
         Ok(())
+        */
     }
 }
 

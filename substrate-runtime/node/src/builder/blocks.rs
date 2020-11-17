@@ -1,7 +1,7 @@
 use super::create_tx;
 use crate::executor::ClientInMem;
-use crate::primitives::runtime::{Block, BlockId, Runtime, TimestampCall, Timestamp, RuntimeCall};
-use crate::primitives::{RawBlock, TxtBlock, TxtAccountSeed, ExtrinsicSigner};
+use crate::primitives::runtime::{Block, BlockId, Runtime, RuntimeCall, Timestamp, TimestampCall};
+use crate::primitives::{ExtrinsicSigner, RawBlock, TxtAccountSeed, TxtBlock};
 use crate::Result;
 use codec::Encode;
 use pallet_timestamp::Module;
@@ -83,29 +83,28 @@ impl BlockCmd {
                 }
 
                 // Create timestamp in an externalities-provided environment.
-                let timestamp = client.exec_context(&at, || {
-                    Ok(Some(Timestamp::now()))
-                }).unwrap().unwrap();
+                let timestamp = client
+                    .exec_context(&at, || Ok(Some(Timestamp::now())))
+                    .unwrap()
+                    .unwrap();
 
                 // Include inherent.
-                let x = rt.inherent_extrinsics(&at, {
-                    let mut inherent = InherentData::new();
-                    inherent
-                        .put_data(
-                            *b"timstap0",
-                            &timestamp,
-                        )
-                        .map_err(|err| {
+                let x = rt
+                    .inherent_extrinsics(&at, {
+                        let mut inherent = InherentData::new();
+                        inherent.put_data(*b"timstap0", &timestamp).map_err(|err| {
                             failure::err_msg(format!("Failed to create inherent: {}", err))
                         })?;
-                    inherent
-                })
-                .map_err(|err| failure::err_msg(format!("Failed to include inherent: {}", err)))?;
+                        inherent
+                    })
+                    .map_err(|err| {
+                        failure::err_msg(format!("Failed to include inherent: {}", err))
+                    })?;
 
                 for e in x {
-                    rt
-                        .apply_extrinsic(&at, e)
-                        .map_err(|err| failure::err_msg(format!("Failed to apply extrinsic: {}", err)))?;
+                    rt.apply_extrinsic(&at, e).map_err(|err| {
+                        failure::err_msg(format!("Failed to apply extrinsic: {}", err))
+                    })?;
                 }
 
                 let header = rt

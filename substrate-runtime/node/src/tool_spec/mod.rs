@@ -2,8 +2,8 @@ use crate::builder::blocks::BlockCmdResult;
 use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
 use crate::Result;
-use processor::{Processor, TaskType};
 pub use processor::Outcome;
+use processor::{Processor, TaskType};
 
 mod processor;
 

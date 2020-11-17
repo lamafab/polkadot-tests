@@ -1,15 +1,15 @@
 use super::Result;
 use crate::primitives::runtime::{
-    AccountId, RuntimeCall, CheckedExtrinsic, SignedExtra, UncheckedExtrinsic,
+    AccountId, CheckedExtrinsic, RuntimeCall, SignedExtra, UncheckedExtrinsic,
 };
 use crate::tool_spec::Outcome;
 use codec::Encode;
+use serde::de::DeserializeOwned;
+use serde::ser::Serialize;
 use sp_core::crypto::Pair;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::MultiSignature;
-use serde::ser::Serialize;
-use serde::de::DeserializeOwned;
 
 pub mod balances;
 pub mod blocks;
@@ -20,22 +20,34 @@ pub use blocks::BlockCmd;
 pub use genesis::GenesisCmd;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct BuilderName(String);
+struct ModuleName(&'static str);
+
+impl ModuleName {
+    const fn from(value: &'static str) -> Self {
+        ModuleName(value)
+    }
+    fn as_str(&self) -> &'static str {
+        &self.0
+    }
+}
 
 trait Builder {
-    const NAME: BuilderName;
-
     type Input: DeserializeOwned;
     type Output: Serialize;
+    const MODULE: ModuleName;
 
     fn run(&self) -> Result<Self::Output>;
+    fn function_name(&self) -> ModuleName;
     fn run_and_print(&self) -> Result<()> {
-        println!("{}", serde_json::to_string_pretty(
-            &Outcome {
-                name: &Self::NAME,
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&Outcome {
+                task_name: Option::<()>::None,
+                module: &Self::MODULE,
+                function: self.function_name(),
                 data: self.run()?,
-            }
-        )?);
+            })?
+        );
 
         Ok(())
     }
