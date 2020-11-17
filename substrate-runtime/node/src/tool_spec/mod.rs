@@ -1,4 +1,3 @@
-use crate::builder::balances::CallCmd as BalanceCallCmd;
 use crate::builder::blocks::BlockCmdResult;
 use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};

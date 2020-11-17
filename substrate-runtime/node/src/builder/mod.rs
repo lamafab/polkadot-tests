@@ -1,5 +1,7 @@
 use super::Result;
-use crate::primitives::runtime::{AccountId, Call, SignedExtra, UncheckedExtrinsic};
+use crate::primitives::runtime::{
+    AccountId, RuntimeCall, CheckedExtrinsic, SignedExtra, UncheckedExtrinsic,
+};
 use codec::Encode;
 use sp_core::crypto::Pair;
 use sp_runtime::generic::{Era, SignedPayload};
@@ -14,7 +16,14 @@ pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
 pub use genesis::GenesisCmd;
 
-fn create_tx<P: Pair>(pair: P, function: Call, nonce: u32) -> Result<UncheckedExtrinsic>
+fn create_inherent(function: RuntimeCall) -> CheckedExtrinsic {
+    CheckedExtrinsic {
+        signed: None,
+        function: function,
+    }
+}
+
+fn create_tx<P: Pair>(pair: P, function: RuntimeCall, nonce: u32) -> Result<UncheckedExtrinsic>
 where
     AccountId: From<<P as Pair>::Public>,
     MultiSignature: From<<P as Pair>::Signature>,

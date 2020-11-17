@@ -16,9 +16,9 @@ use structopt::StructOpt;
 pub mod runtime {
     // `AccountId` -> `sp_runtime::AccountId32`
     pub use node_template_runtime::{
-        AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber, Call,
-        GenesisConfig, GrandpaConfig, Header, Runtime, Signature, SignedExtra, SudoConfig,
-        SystemConfig, TimestampCall, UncheckedExtrinsic, WASM_BINARY,
+        AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber, Call as RuntimeCall,
+        CheckedExtrinsic, GenesisConfig, GrandpaConfig, Header, Runtime, Signature, SignedExtra,
+        SudoConfig, SystemConfig, TimestampCall, UncheckedExtrinsic, WASM_BINARY, Timestamp
     };
 }
 
@@ -88,6 +88,18 @@ pub type ExtrinsicSigner = sr25519::Pair;
 pub struct TxtAccountSeed(String);
 
 impl TxtAccountSeed {
+    pub fn alice() -> Self {
+        TxtAccountSeed("alice".to_string())
+    }
+    pub fn bob() -> Self {
+        TxtAccountSeed("bob".to_string())
+    }
+    pub fn dave() -> Self {
+        TxtAccountSeed("dave".to_string())
+    }
+    pub fn eve() -> Self {
+        TxtAccountSeed("eve".to_string())
+    }
     pub fn as_str(&self) -> &str {
         &self.0
     }

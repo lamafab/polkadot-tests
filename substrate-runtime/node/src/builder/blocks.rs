@@ -1,9 +1,13 @@
+use super::create_tx;
 use crate::executor::ClientInMem;
-use crate::primitives::runtime::{Block, BlockId};
-use crate::primitives::{RawBlock, TxtBlock};
+use crate::primitives::runtime::{Block, BlockId, Runtime, TimestampCall, Timestamp, RuntimeCall};
+use crate::primitives::{RawBlock, TxtBlock, TxtAccountSeed, ExtrinsicSigner};
 use crate::Result;
+use codec::Encode;
+use pallet_timestamp::Module;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
+use sp_inherents::InherentData;
 use std::convert::{TryFrom, TryInto};
 use structopt::StructOpt;
 
@@ -76,6 +80,32 @@ impl BlockCmd {
                     } else {
                         return Err(failure::err_msg("Apply extrinsic dispatch error"));
                     }
+                }
+
+                // Create timestamp in an externalities-provided environment.
+                let timestamp = client.exec_context(&at, || {
+                    Ok(Some(Timestamp::now()))
+                }).unwrap().unwrap();
+
+                // Include inherent.
+                let x = rt.inherent_extrinsics(&at, {
+                    let mut inherent = InherentData::new();
+                    inherent
+                        .put_data(
+                            *b"timstap0",
+                            &timestamp,
+                        )
+                        .map_err(|err| {
+                            failure::err_msg(format!("Failed to create inherent: {}", err))
+                        })?;
+                    inherent
+                })
+                .map_err(|err| failure::err_msg(format!("Failed to include inherent: {}", err)))?;
+
+                for e in x {
+                    rt
+                        .apply_extrinsic(&at, e)
+                        .map_err(|err| failure::err_msg(format!("Failed to apply extrinsic: {}", err)))?;
                 }
 
                 let header = rt
