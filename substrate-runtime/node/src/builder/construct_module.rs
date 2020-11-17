@@ -1,12 +1,10 @@
 macro_rules! module {
     (
-        #[$m1:meta]
         #[serde(rename = $module_name:expr)]
         struct $struct:ident {
             $($struct_tt:tt)*
         }
 
-        #[$m2:meta]
         enum $enum:ident {
             $(
                 #[serde(rename = $func_name:expr)]
@@ -20,11 +18,11 @@ macro_rules! module {
             fn run($self:ident) -> Result<$ret:ty> $run_body:block
         }
     ) => {
-        #[$m1]
+        #[derive(Debug, StructOpt, Serialize, Deserialize)]
         #[serde(rename = $module_name)]
         pub struct $struct { $($struct_tt)* }
 
-        #[$m2]
+        #[derive(Debug, StructOpt, Serialize, Deserialize)]
         enum $enum {
             $(
                 #[serde(rename = $func_name)]
@@ -36,7 +34,7 @@ macro_rules! module {
 
         impl crate::builder::ModuleInfo for $struct {
             fn module_name(&self) -> crate::builder::ModuleName {
-                ModuleName::from($module_name)
+                crate::builder::ModuleName::from($module_name)
             }
             fn function_name(&self) -> crate::builder::FunctionName {
                 match self.call {
@@ -48,12 +46,12 @@ macro_rules! module {
         impl crate::builder::Builder for $struct {
             type Output = $ret;
 
-            fn run($self) -> Result<Self::Output> $run_body
+            fn run($self) -> crate::Result<Self::Output> $run_body
         }
 
         // TODO: Delete this
         impl $struct2 {
-            pub fn run($self) -> Result<$ret> $run_body
+            pub fn run($self) -> crate::Result<$ret> $run_body
         }
     };
 }

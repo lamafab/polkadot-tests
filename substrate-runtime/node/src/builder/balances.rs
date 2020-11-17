@@ -32,7 +32,6 @@ impl FromStr for RawPrivateKey {
 }
 
 module!(
-    #[derive(Debug, StructOpt, Serialize, Deserialize)]
     #[serde(rename = "pallet_balances")]
     struct PalletBalancesCmd {
         #[structopt(subcommand)]
@@ -40,7 +39,6 @@ module!(
         call: CallCmd,
     }
 
-    #[derive(Debug, StructOpt, Serialize, Deserialize)]
     enum CallCmd {
         #[serde(rename = "transfer")]
         Transfer {

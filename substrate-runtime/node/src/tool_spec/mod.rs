@@ -37,10 +37,12 @@ impl ToolSpec {
         for task in proc.tasks() {
             match task.task_type()? {
                 TaskType::Block => proc.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
-                    BlockCmd::build_block(txt_block).run()
+                    //BlockCmd::build_block(txt_block).run()
+                    unimplemented!()
                 }),
                 TaskType::Execute => proc.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
-                    BlockCmd::execute_block(raw_blocks).run()
+                    //BlockCmd::execute_block(raw_blocks).run()
+                    unimplemented!()
                 }),
                 TaskType::PalletBalances => proc.run::<PalletBalancesCmd, RawExtrinsic, _>(task, |call| {
                     call.run()
