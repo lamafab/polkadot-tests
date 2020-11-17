@@ -1,5 +1,5 @@
+use crate::builder::{FunctionName, ModuleName};
 use crate::Result;
-use crate::builder::{ModuleName, FunctionName};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::cell::Cell;

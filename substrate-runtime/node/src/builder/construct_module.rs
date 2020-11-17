@@ -29,7 +29,7 @@ macro_rules! module {
             $(
                 #[serde(rename = $func_name)]
                 $func {
-                    $($func_tt)*
+                        $($func_tt)*
                 },
             )*
         }
@@ -43,6 +43,12 @@ macro_rules! module {
                     $( $enum::$func { .. } => crate::builder::FunctionName::from($func_name), )*
                 }
             }
+        }
+
+        impl crate::builder::Builder for $struct {
+            type Output = $ret;
+
+            fn run($self) -> Result<Self::Output> $run_body
         }
 
         // TODO: Delete this

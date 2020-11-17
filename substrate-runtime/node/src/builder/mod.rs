@@ -50,11 +50,11 @@ impl FunctionName {
     }
 }
 
-trait Builder: ModuleInfo {
+trait Builder: Sized + ModuleInfo {
     type Output: Serialize;
 
-    fn run(&self) -> Result<Self::Output>;
-    fn run_and_print(&self) -> Result<()> {
+    fn run(self) -> Result<Self::Output>;
+    fn run_and_print(self) -> Result<()> {
         println!(
             "{}",
             serde_json::to_string_pretty(&Outcome {
