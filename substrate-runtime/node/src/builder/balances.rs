@@ -31,39 +31,44 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-macro_rules! module {
+trait ModuleInfo {
+    fn module_name(&self) -> &'static ModuleName;
+    fn function_name(&self) -> &'static str;
+}
+
+macro_rules! module_info {
     (
         #[$m1:meta]
-        #[serde(rename = $n:expr)]
+        #[serde(rename = $module_name:expr)]
         pub struct $struct:ident {
-            $($tt:tt)*
+            $($struct_tt:tt)*
         }
 
         #[$m2:meta]
         enum $enum:ident {
             $(
-                #[serde(rename = $n2:expr)]
+                #[serde(rename = $func_name:expr)]
                 $func:ident {
-                    $($tt2:tt)*
+                    $($func_tt:tt)*
                 },
             )*
         }
     ) => {
         #[$m1]
-        #[serde(rename = $n)]
-        pub struct $struct { $($tt)* }
+        #[serde(rename = $module_name)]
+        pub struct $struct { $($struct_tt)* }
 
         #[$m2]
         enum $enum {
             $(
-                #[serde(rename = $n2)]
+                #[serde(rename = $func_name)]
                 $func {
-                    $($tt2)*
+                    $($func_tt)*
                 },
             )*
         }
 
-        const MODULE: ModuleName = ModuleName::from($n);
+        const MODULE: ModuleName = ModuleName::from($module_name);
 
         impl ModuleInfo for $struct {
             fn module_name(&self) -> &'static ModuleName {
@@ -71,14 +76,14 @@ macro_rules! module {
             }
             fn function_name(&self) -> &'static str {
                 match self.call {
-                    $( $enum::$func { .. } => &$n2, )*
+                    $( $enum::$func { .. } => &$func_name, )*
                 }
             }
         }
     };
 }
 
-module!(
+module_info!(
     #[derive(Debug, StructOpt, Serialize, Deserialize)]
     #[serde(rename = "pallet_balances")]
     pub struct PalletBalancesCmd {
@@ -102,11 +107,6 @@ module!(
         },
     }
 );
-
-trait ModuleInfo {
-    fn module_name(&self) -> &'static ModuleName;
-    fn function_name(&self) -> &'static str;
-}
 
 impl Builder for PalletBalancesCmd {
     type Input = Self;
