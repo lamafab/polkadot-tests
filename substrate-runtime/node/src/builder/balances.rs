@@ -33,11 +33,7 @@ impl FromStr for RawPrivateKey {
 
 module!(
     #[serde(rename = "pallet_balances")]
-    struct PalletBalancesCmd {
-        #[structopt(subcommand)]
-        #[serde(flatten)]
-        call: CallCmd,
-    }
+    struct PalletBalancesCmd;
 
     enum CallCmd {
         #[serde(rename = "transfer")]

@@ -20,11 +20,7 @@ pub enum BlockCmdResult {
 
 module!(
     #[serde(rename = "block")]
-    struct BlockCmd {
-        #[structopt(subcommand)]
-        #[serde(flatten)]
-        call: CallCmd,
-    }
+    struct BlockCmd;
 
     enum CallCmd {
         #[serde(rename = "build")]

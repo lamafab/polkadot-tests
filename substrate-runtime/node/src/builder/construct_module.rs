@@ -1,9 +1,7 @@
 macro_rules! module {
     (
         #[serde(rename = $module_name:expr)]
-        struct $struct:ident {
-            $($struct_tt:tt)*
-        }
+        struct $struct:ident;
 
         enum $enum:ident {
             $(
@@ -20,7 +18,11 @@ macro_rules! module {
     ) => {
         #[derive(Debug, StructOpt, Serialize, Deserialize)]
         #[serde(rename = $module_name)]
-        pub struct $struct { $($struct_tt)* }
+        pub struct $struct {
+            #[structopt(subcommand)]
+            #[serde(flatten)]
+            call: $enum,
+        }
 
         #[derive(Debug, StructOpt, Serialize, Deserialize)]
         enum $enum {

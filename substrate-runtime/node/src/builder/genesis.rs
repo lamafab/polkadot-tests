@@ -14,10 +14,7 @@ use structopt::StructOpt;
 
 module!(
     #[serde(rename = "genesis")]
-    struct GenesisCmd {
-        #[structopt(subcommand)]
-        call: CallCmd,
-    }
+    struct GenesisCmd;
 
     enum CallCmd {
         #[serde(rename = "default")]
