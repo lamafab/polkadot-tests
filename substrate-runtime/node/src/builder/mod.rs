@@ -69,13 +69,6 @@ trait Builder: Sized + ModuleInfo {
     }
 }
 
-fn create_inherent(function: RuntimeCall) -> CheckedExtrinsic {
-    CheckedExtrinsic {
-        signed: None,
-        function: function,
-    }
-}
-
 fn create_tx<P: Pair>(pair: P, function: RuntimeCall, nonce: u32) -> Result<UncheckedExtrinsic>
 where
     AccountId: From<<P as Pair>::Public>,
