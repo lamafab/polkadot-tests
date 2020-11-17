@@ -2,11 +2,14 @@ use super::Result;
 use crate::primitives::runtime::{
     AccountId, RuntimeCall, CheckedExtrinsic, SignedExtra, UncheckedExtrinsic,
 };
+use crate::tool_spec::Outcome;
 use codec::Encode;
 use sp_core::crypto::Pair;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::MultiSignature;
+use serde::ser::Serialize;
+use serde::de::DeserializeOwned;
 
 pub mod balances;
 pub mod blocks;
@@ -15,6 +18,28 @@ pub mod genesis;
 pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
 pub use genesis::GenesisCmd;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct BuilderName(String);
+
+trait Builder {
+    const NAME: BuilderName;
+
+    type Input: DeserializeOwned;
+    type Output: Serialize;
+
+    fn run(&self) -> Result<Self::Output>;
+    fn run_and_print(&self) -> Result<()> {
+        println!("{}", serde_json::to_string_pretty(
+            &Outcome {
+                name: &Self::NAME,
+                data: self.run()?,
+            }
+        )?);
+
+        Ok(())
+    }
+}
 
 fn create_inherent(function: RuntimeCall) -> CheckedExtrinsic {
     CheckedExtrinsic {

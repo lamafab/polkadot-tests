@@ -3,8 +3,29 @@ use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
 use crate::Result;
 use processor::{Processor, TaskType};
+pub use processor::Outcome;
 
 mod processor;
+
+/*
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub enum TaskType {
+    #[serde(rename = "block")]
+    Block,
+    #[serde(rename = "pallet_balances")]
+    PalletBalances,
+    #[serde(rename = "execute")]
+    Execute,
+    #[serde(rename = "genesis")]
+    Genesis,
+    #[cfg(test)]
+    #[serde(rename = "person")]
+    Person,
+    #[cfg(test)]
+    #[serde(rename = "animal")]
+    Animal,
+}
+*/
 
 pub struct ToolSpec;
 

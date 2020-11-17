@@ -12,9 +12,9 @@ pub struct Processor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Outcome<T> {
-    name: String,
-    data: Vec<T>,
+pub struct Outcome<Name, Data> {
+    pub name: Name,
+    pub data: Data,
 }
 
 impl Processor {
@@ -52,7 +52,7 @@ impl Processor {
         println!(
             "{}",
             serde_json::to_string_pretty(&Outcome {
-                name: task.name().to_string(),
+                name: task.name(),
                 data: results,
             })?
         );
