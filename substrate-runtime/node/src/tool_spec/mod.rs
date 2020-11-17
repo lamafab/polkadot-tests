@@ -1,4 +1,4 @@
-use crate::builder::balances::TransferDetails;
+use crate::builder::balances::CallCmd as BalanceCallCmd;
 use crate::builder::blocks::BlockCmdResult;
 use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
@@ -22,8 +22,8 @@ impl ToolSpec {
                 TaskType::Execute => proc.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
                     BlockCmd::execute_block(raw_blocks).run()
                 }),
-                TaskType::PalletBalances => proc.run::<TransferDetails, RawExtrinsic, _>(task, |details| {
-                    PalletBalancesCmd::transfer(details).run()
+                TaskType::PalletBalances => proc.run::<PalletBalancesCmd, RawExtrinsic, _>(task, |call| {
+                    call.run()
                 }),
                 TaskType::Genesis => proc.run::<Vec<TxtAccountSeed>, TxtChainSpec, _>(task, |accounts| {
                     GenesisCmd::accounts(accounts).run()
@@ -63,9 +63,10 @@ mod tests {
             r#"
             - name: Balance transfer
               pallet_balances:
-                from: alice
-                to: bob
-                balance: 100
+                transfer:
+                  from: alice
+                  to: bob
+                  balance: 100
         "#,
         )
         .unwrap()

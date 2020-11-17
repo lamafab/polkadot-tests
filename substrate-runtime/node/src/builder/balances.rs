@@ -31,53 +31,46 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Serialize, Deserialize)]
 pub struct PalletBalancesCmd {
     #[structopt(subcommand)]
+    #[serde(flatten)]
     call: CallCmd,
 }
 
-impl PalletBalancesCmd {
-    pub fn transfer(details: TransferDetails) -> Self {
-        PalletBalancesCmd {
-            call: CallCmd::Transfer { details },
-        }
-    }
-}
-
-#[derive(Debug, Clone, StructOpt, Serialize, Deserialize)]
-pub struct TransferDetails {
-    #[structopt(short, long)]
-    genesis: Option<TxtChainSpec>,
-    #[structopt(short, long)]
-    from: TxtAccountSeed,
-    #[structopt(short, long)]
-    to: TxtAccountSeed,
-    #[structopt(short, long)]
-    balance: Balance,
-}
-
-#[derive(Debug, StructOpt)]
-enum CallCmd {
+#[derive(Debug, StructOpt, Serialize, Deserialize)]
+pub enum CallCmd {
+    #[serde(rename = "transfer")]
     Transfer {
-        #[structopt(flatten)]
-        details: TransferDetails,
+        #[structopt(short, long)]
+        genesis: Option<TxtChainSpec>,
+        #[structopt(short, long)]
+        from: TxtAccountSeed,
+        #[structopt(short, long)]
+        to: TxtAccountSeed,
+        #[structopt(short, long)]
+        balance: u64,
     },
 }
 
 impl PalletBalancesCmd {
     pub fn run(self) -> Result<RawExtrinsic> {
         match self.call {
-            CallCmd::Transfer { details } => ClientInMem::new()?
+            CallCmd::Transfer {
+                genesis,
+                from,
+                to,
+                balance,
+            } => ClientInMem::new()?
                 .exec_context(&BlockId::Number(0), || {
                     create_tx::<ExtrinsicSigner>(
-                        details.from.try_into()?,
+                        from.try_into()?,
                         Call::Balances(BalancesCall::transfer(
                             get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
-                                details.to.as_str(),
+                                to.as_str(),
                             )
                             .into(),
-                            details.balance,
+                            balance as Balance,
                         )),
                         0,
                     )
