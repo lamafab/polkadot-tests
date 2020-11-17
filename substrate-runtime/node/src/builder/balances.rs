@@ -84,23 +84,3 @@ module!(
         }
     }
 );
-
-impl Builder for PalletBalancesCmd {
-    type Input = Self;
-    type Output = RawExtrinsic;
-    const MODULE: ModuleName = ModuleName::from("pallet_balances");
-
-    fn function_name(&self) -> ModuleName {
-
-        unimplemented!()
-        /*
-        match self.call {
-            Transfer { .. } => ModuleName::from("transfer")
-        }
-        */
-    }
-    fn run(&self) -> Result<Self::Output> {
-        unimplemented!()
-    }
-}
-

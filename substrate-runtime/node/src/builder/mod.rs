@@ -22,12 +22,12 @@ pub use blocks::BlockCmd;
 pub use genesis::GenesisCmd;
 
 trait ModuleInfo {
-    fn module_name(&self) -> &'static ModuleName;
-    fn function_name(&self) -> &'static str;
+    fn module_name(&self) -> ModuleName;
+    fn function_name(&self) -> FunctionName;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct ModuleName(&'static str);
+pub struct ModuleName(&'static str);
 
 impl ModuleName {
     const fn from(value: &'static str) -> Self {
@@ -38,19 +38,28 @@ impl ModuleName {
     }
 }
 
-trait Builder {
-    type Input: DeserializeOwned;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FunctionName(&'static str);
+
+impl FunctionName {
+    const fn from(value: &'static str) -> Self {
+        FunctionName(value)
+    }
+    fn as_str(&self) -> &'static str {
+        &self.0
+    }
+}
+
+trait Builder: ModuleInfo {
     type Output: Serialize;
-    const MODULE: ModuleName;
 
     fn run(&self) -> Result<Self::Output>;
-    fn function_name(&self) -> ModuleName;
     fn run_and_print(&self) -> Result<()> {
         println!(
             "{}",
             serde_json::to_string_pretty(&Outcome {
-                task_name: Option::<()>::None,
-                module: &Self::MODULE,
+                task_name: Option::<String>::None,
+                module: self.module_name(),
                 function: self.function_name(),
                 data: self.run()?,
             })?

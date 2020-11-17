@@ -1,4 +1,5 @@
 use crate::Result;
+use crate::builder::{ModuleName, FunctionName};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::cell::Cell;
@@ -11,11 +12,11 @@ pub struct Processor {
     tasks: Vec<Task>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Outcome<Name, Module, Function, Data> {
-    pub task_name: Option<Name>,
-    pub module: Module,
-    pub function: Function,
+#[derive(Debug, Clone, Serialize)]
+pub struct Outcome<Data> {
+    pub task_name: Option<String>,
+    pub module: ModuleName,
+    pub function: FunctionName,
     pub data: Data,
 }
 

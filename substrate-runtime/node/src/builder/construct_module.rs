@@ -34,15 +34,13 @@ macro_rules! module {
             )*
         }
 
-        const MODULE: ModuleName = ModuleName::from($module_name);
-
         impl crate::builder::ModuleInfo for $struct {
-            fn module_name(&self) -> &'static ModuleName {
-                &MODULE
+            fn module_name(&self) -> crate::builder::ModuleName {
+                ModuleName::from($module_name)
             }
-            fn function_name(&self) -> &'static str {
+            fn function_name(&self) -> crate::builder::FunctionName {
                 match self.call {
-                    $( $enum::$func { .. } => &$func_name, )*
+                    $( $enum::$func { .. } => crate::builder::FunctionName::from($func_name), )*
                 }
             }
         }
