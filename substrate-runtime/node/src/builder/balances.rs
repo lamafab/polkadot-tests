@@ -31,62 +31,10 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-trait ModuleInfo {
-    fn module_name(&self) -> &'static ModuleName;
-    fn function_name(&self) -> &'static str;
-}
-
-macro_rules! module_info {
-    (
-        #[$m1:meta]
-        #[serde(rename = $module_name:expr)]
-        pub struct $struct:ident {
-            $($struct_tt:tt)*
-        }
-
-        #[$m2:meta]
-        enum $enum:ident {
-            $(
-                #[serde(rename = $func_name:expr)]
-                $func:ident {
-                    $($func_tt:tt)*
-                },
-            )*
-        }
-    ) => {
-        #[$m1]
-        #[serde(rename = $module_name)]
-        pub struct $struct { $($struct_tt)* }
-
-        #[$m2]
-        enum $enum {
-            $(
-                #[serde(rename = $func_name)]
-                $func {
-                    $($func_tt)*
-                },
-            )*
-        }
-
-        const MODULE: ModuleName = ModuleName::from($module_name);
-
-        impl ModuleInfo for $struct {
-            fn module_name(&self) -> &'static ModuleName {
-                &MODULE
-            }
-            fn function_name(&self) -> &'static str {
-                match self.call {
-                    $( $enum::$func { .. } => &$func_name, )*
-                }
-            }
-        }
-    };
-}
-
-module_info!(
+module!(
     #[derive(Debug, StructOpt, Serialize, Deserialize)]
     #[serde(rename = "pallet_balances")]
-    pub struct PalletBalancesCmd {
+    struct PalletBalancesCmd {
         #[structopt(subcommand)]
         #[serde(flatten)]
         call: CallCmd,
@@ -106,6 +54,35 @@ module_info!(
             balance: u64,
         },
     }
+
+    impl PalletBalancesCmd {
+        fn run(self) -> Result<RawExtrinsic> {
+            match self.call {
+                CallCmd::Transfer {
+                    genesis: _,
+                    from,
+                    to,
+                    balance,
+                } => ClientInMem::new()?
+                    .exec_context(&BlockId::Number(0), || {
+                        create_tx::<ExtrinsicSigner>(
+                            from.try_into()?,
+                            RuntimeCall::Balances(BalancesCall::transfer(
+                                get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
+                                    to.as_str(),
+                                )
+                                .into(),
+                                balance as Balance,
+                            )),
+                            0,
+                        )
+                        .map(|t| RawExtrinsic::from(t))
+                        .map(Some)
+                    })
+                    .map(|extr| extr.unwrap()),
+            }
+        }
+    }
 );
 
 impl Builder for PalletBalancesCmd {
@@ -114,7 +91,6 @@ impl Builder for PalletBalancesCmd {
     const MODULE: ModuleName = ModuleName::from("pallet_balances");
 
     fn function_name(&self) -> ModuleName {
-        use CallCmd::*;
 
         unimplemented!()
         /*
@@ -128,31 +104,3 @@ impl Builder for PalletBalancesCmd {
     }
 }
 
-impl PalletBalancesCmd {
-    pub fn run(self) -> Result<RawExtrinsic> {
-        match self.call {
-            CallCmd::Transfer {
-                genesis: _,
-                from,
-                to,
-                balance,
-            } => ClientInMem::new()?
-                .exec_context(&BlockId::Number(0), || {
-                    create_tx::<ExtrinsicSigner>(
-                        from.try_into()?,
-                        RuntimeCall::Balances(BalancesCall::transfer(
-                            get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
-                                to.as_str(),
-                            )
-                            .into(),
-                            balance as Balance,
-                        )),
-                        0,
-                    )
-                    .map(|t| RawExtrinsic::from(t))
-                    .map(Some)
-                })
-                .map(|extr| extr.unwrap()),
-        }
-    }
-}

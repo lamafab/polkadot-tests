@@ -11,6 +11,8 @@ use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::MultiSignature;
 
+#[macro_use]
+pub mod construct_module;
 pub mod balances;
 pub mod blocks;
 pub mod genesis;
@@ -18,6 +20,11 @@ pub mod genesis;
 pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
 pub use genesis::GenesisCmd;
+
+trait ModuleInfo {
+    fn module_name(&self) -> &'static ModuleName;
+    fn function_name(&self) -> &'static str;
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ModuleName(&'static str);
