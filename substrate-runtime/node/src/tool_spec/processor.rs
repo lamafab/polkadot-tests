@@ -33,33 +33,44 @@ impl<TaskType: TaskRunner<Outcome> + DeserializeOwned, Outcome: DeserializeOwned
         })
     }
     pub fn process(self) -> Result<()> {
-        for mut task in self.tasks {
-            let (flattened, register) = task_parser::<TaskType, Outcome>(&self.global_var_pool, &mut task.properties)?;
-
-            let mut results = vec![];
-
-            for t in flattened {
-                results.push(t.run()?);
-            }
-
-            if let Some(var_name) = register {
-                self.global_var_pool
-                    .insert_named(var_name, serde_yaml::to_value(results.clone())?);
-            }
-
-            /*
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&TaskOutcome {
-                    name: task.name(),
-                    data: results,
-                })?
-            );
-            */
-        }
 
         Ok(())
     }
+    /*
+    pub fn tasks(&self) -> Vec<Task> {
+        // TODO: This should be done without cloning, but is currently
+        // implemented in order to acquire a mutable call to `Processor::run`
+        // from within `ToolSpec` (module root).
+        self.tasks.clone()
+    }
+    pub fn run<T: DeserializeOwned, R: Serialize + Clone, F: Fn(T) -> Result<R>>(
+        &mut self,
+        task: Task,
+        f: F,
+    ) -> Result<()> {
+        let (tasks, register) = task_parser(&self.global_var_pool, &task.properties)?;
+        let mut results = vec![];
+
+        for task in tasks {
+            results.push(f(task)?);
+        }
+
+        if let Some(var_name) = register {
+            self.global_var_pool
+                .insert_named(var_name, serde_yaml::to_value(results.clone())?);
+        }
+
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&Outcome {
+                name: task.name().to_string(),
+                data: results,
+            })?
+        );
+
+        Ok(())
+    }
+    */
 }
 
 fn global_parser<TaskType: DeserializeOwned>(

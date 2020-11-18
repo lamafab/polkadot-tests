@@ -37,7 +37,7 @@ module!(
 
     impl BlockCmd {
         fn run(self) -> Result<BlockCmdResult> {
-            match self.call.unwrap() {
+            match self.call {
                 CallCmd::BuildBlock { spec_block } => {
                     // Convert into runtime types.
                     let (at, header, extrinsics) = spec_block.prep()?;

@@ -28,7 +28,7 @@ module!(
 
     impl GenesisCmd {
         fn run(self) -> Result<TxtChainSpec> {
-            match self.call.unwrap() {
+            match self.call {
                 CallCmd::Default {} => gen_chain_spec_default()?.try_into(),
                 CallCmd::Accounts { accounts } => gen_chain_spec_with_accounts(
                     accounts
@@ -45,12 +45,12 @@ module!(
 impl GenesisCmd {
     pub fn default() -> Self {
         GenesisCmd {
-            call: Some(CallCmd::Default {}),
+            call: CallCmd::Default {},
         }
     }
     pub fn accounts(accounts: Vec<TxtAccountSeed>) -> Self {
         GenesisCmd {
-            call: Some(CallCmd::Accounts { accounts: accounts }),
+            call: CallCmd::Accounts { accounts: accounts },
         }
     }
 }
