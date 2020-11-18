@@ -7,9 +7,9 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::mem::drop;
 
-pub struct Processor {
+pub struct Processor<TaskType> {
     global_var_pool: VarPool,
-    tasks: Vec<Task>,
+    tasks: Vec<Task<TaskType>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -20,7 +20,7 @@ pub struct Outcome<Data> {
     pub data: Data,
 }
 
-impl Processor {
+impl<TaskType: DeserializeOwned> Processor<TaskType> {
     pub fn new(input: &str) -> Result<Self> {
         let (global_var_pool, tasks) = global_parser(input)?;
 
@@ -29,17 +29,7 @@ impl Processor {
             tasks: tasks,
         })
     }
-    pub fn tasks(&self) -> Vec<Task> {
-        // TODO: This should be done without cloning, but is currently
-        // implemented in order to acquire a mutable call to `Processor::run`
-        // from within `ToolSpec` (module root).
-        self.tasks.clone()
-    }
-    pub fn run<T: DeserializeOwned, R: Serialize + Clone, F: Fn(T) -> Result<R>>(
-        &mut self,
-        task: Task,
-        f: F,
-    ) -> Result<()> {
+    pub fn run(&self) -> Result<()> {
         unimplemented!();
         /*
         let (tasks, register) = task_parser(&self.global_var_pool, &task.properties)?;
@@ -67,8 +57,10 @@ impl Processor {
     }
 }
 
-fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
-    let yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(input)?;
+fn global_parser<TaskType: DeserializeOwned>(
+    input: &str,
+) -> Result<(VarPool, Vec<Task<TaskType>>)> {
+    let yaml_blocks: Vec<YamlItem<TaskType>> = serde_yaml::from_str(input)?;
 
     let mut tasks = vec![];
     let mut global_vars = None;
@@ -109,9 +101,9 @@ fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
     Ok((global_var_pool, tasks))
 }
 
-fn task_parser<T: DeserializeOwned>(
+fn task_parser<TaskType: DeserializeOwned, T: DeserializeOwned>(
     global_var_pool: &VarPool,
-    properties: &HashMap<KeyType, serde_yaml::Value>,
+    mut properties: &mut Vec<(KeyType<TaskType>, serde_yaml::Value)>,
 ) -> Result<(Vec<T>, Option<VariableName>)> {
     let mut register = None;
 
@@ -121,7 +113,7 @@ fn task_parser<T: DeserializeOwned>(
     let mut vars = None;
     let mut loop_vars = None;
 
-    for (key, val) in properties {
+    for (key, val) in properties.iter() {
         match key {
             KeyType::TaskType(_) => {}
             KeyType::Keyword(keyword) => match keyword {
@@ -179,14 +171,14 @@ fn task_parser<T: DeserializeOwned>(
     let mut expanded = vec![];
 
     for index in 0..loop_count {
-        let mut loop_properties = properties.clone();
+        //let loop_properties = properties.clone();
         let converter = VariableProcessor::new(global_var_pool, &local_var_pool, index);
-        converter.process_properties(&mut loop_properties)?;
+        converter.process_properties(&mut properties)?;
 
-        for (key, val) in loop_properties {
+        for (key, val) in properties.iter() {
             match key {
                 KeyType::TaskType(_) => {
-                    expanded.push(serde_yaml::from_value::<T>(val)?);
+                    expanded.push(serde_yaml::from_value::<T>(val.clone())?);
                 }
                 _ => {}
             }
@@ -210,9 +202,9 @@ impl<'a> VariableProcessor<'a> {
             loop_index: index,
         }
     }
-    fn process_properties(
+    fn process_properties<TaskType: DeserializeOwned>(
         &self,
-        properties: &mut HashMap<KeyType, serde_yaml::Value>,
+        properties: &mut Vec<(KeyType<TaskType>, serde_yaml::Value)>,
     ) -> Result<()> {
         for (_, val) in properties {
             self.process_yaml_value(val)?;
@@ -374,8 +366,8 @@ impl VarPool {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-enum YamlItem {
-    Task(Task),
+enum YamlItem<TaskType> {
+    Task(Task<TaskType>),
     Vars(Vars),
 }
 
@@ -406,13 +398,13 @@ impl VariableName {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Task {
+pub struct Task<TaskType> {
     name: String,
     #[serde(flatten)]
-    properties: HashMap<KeyType, serde_yaml::Value>,
+    properties: Vec<(KeyType<TaskType>, serde_yaml::Value)>,
 }
 
-impl Task {
+impl<TaskType> Task<TaskType> {
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
@@ -438,9 +430,9 @@ impl Task {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
-enum KeyType {
+enum KeyType<TaskType> {
     TaskType(TaskType),
     Keyword(Keyword),
 }
@@ -453,24 +445,6 @@ enum Keyword {
     Loop,
     #[serde(rename = "vars")]
     Vars,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub enum TaskType {
-    #[serde(rename = "block")]
-    Block,
-    #[serde(rename = "pallet_balances")]
-    PalletBalances,
-    #[serde(rename = "execute")]
-    Execute,
-    #[serde(rename = "genesis")]
-    Genesis,
-    #[cfg(test)]
-    #[serde(rename = "person")]
-    Person,
-    #[cfg(test)]
-    #[serde(rename = "animal")]
-    Animal,
 }
 
 #[cfg(test)]

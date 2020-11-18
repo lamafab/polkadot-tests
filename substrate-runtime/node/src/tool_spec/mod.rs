@@ -3,7 +3,7 @@ use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
 use crate::Result;
 pub use processor::Outcome;
-use processor::{Processor, TaskType};
+use processor::Processor;
 
 mod processor;
 
@@ -27,13 +27,19 @@ pub enum TaskType {
 }
 */
 
+#[derive(Serialize, Deserialize)]
+enum TempType {
+    A(PalletBalancesCmd),
+}
+
 pub struct ToolSpec;
 
 impl ToolSpec {
     #[rustfmt::skip]
     pub fn new(yaml: &str) -> Result<()> {
-        let mut proc = Processor::new(yaml)?;
+        let mut proc = Processor::<TempType>::new(yaml)?;
 
+        /*
         for task in proc.tasks() {
             match task.task_type()? {
                 TaskType::Block => proc.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
@@ -54,6 +60,7 @@ impl ToolSpec {
                 _ => panic!()
             }?;
         }
+        */
 
         Ok(())
     }
