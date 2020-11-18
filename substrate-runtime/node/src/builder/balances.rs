@@ -51,7 +51,7 @@ module!(
 
     impl PalletBalancesCmd {
         fn run(self) -> Result<RawExtrinsic> {
-            match self.call {
+            match self.call.unwrap() {
                 CallCmd::Transfer {
                     genesis: _,
                     from,

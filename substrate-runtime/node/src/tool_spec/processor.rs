@@ -1,5 +1,6 @@
-use crate::builder::{FunctionName, ModuleName};
+use crate::builder::{FunctionName, ModuleName, Builder};
 use crate::Result;
+use super::TaskRunner;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::cell::Cell;
@@ -7,53 +8,57 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::mem::drop;
 
-pub struct Processor<TaskType> {
+pub struct Processor<TaskType, Outcome> {
     global_var_pool: VarPool,
     tasks: Vec<Task<TaskType>>,
+    p: PhantomData<Outcome>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Outcome<Data> {
+pub struct TaskOutcome<Data> {
     pub task_name: Option<String>,
     pub module: ModuleName,
     pub function: FunctionName,
     pub data: Data,
 }
 
-impl<TaskType: DeserializeOwned> Processor<TaskType> {
+impl<TaskType: TaskRunner<Outcome> + DeserializeOwned, Outcome: DeserializeOwned> Processor<TaskType, Outcome> {
     pub fn new(input: &str) -> Result<Self> {
         let (global_var_pool, tasks) = global_parser(input)?;
 
         Ok(Processor {
             global_var_pool: global_var_pool,
             tasks: tasks,
+            p: PhantomData,
         })
     }
-    pub fn run(&self) -> Result<()> {
-        unimplemented!();
-        /*
-        let (tasks, register) = task_parser(&self.global_var_pool, &task.properties)?;
-        let mut results = vec![];
+    pub fn process(self) -> Result<()> {
+        for mut task in self.tasks {
+            let (flattened, register) = task_parser::<TaskType, Outcome>(&self.global_var_pool, &mut task.properties)?;
 
-        for task in tasks {
-            results.push(f(task)?);
+            let mut results = vec![];
+
+            for t in flattened {
+                results.push(t.run()?);
+            }
+
+            if let Some(var_name) = register {
+                self.global_var_pool
+                    .insert_named(var_name, serde_yaml::to_value(results.clone())?);
+            }
+
+            /*
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&TaskOutcome {
+                    name: task.name(),
+                    data: results,
+                })?
+            );
+            */
         }
-
-        if let Some(var_name) = register {
-            self.global_var_pool
-                .insert_named(var_name, serde_yaml::to_value(results.clone())?);
-        }
-
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&Outcome {
-                name: task.name(),
-                data: results,
-            })?
-        );
 
         Ok(())
-        */
     }
 }
 
@@ -171,7 +176,6 @@ fn task_parser<TaskType: DeserializeOwned, T: DeserializeOwned>(
     let mut expanded = vec![];
 
     for index in 0..loop_count {
-        //let loop_properties = properties.clone();
         let converter = VariableProcessor::new(global_var_pool, &local_var_pool, index);
         converter.process_properties(&mut properties)?;
 

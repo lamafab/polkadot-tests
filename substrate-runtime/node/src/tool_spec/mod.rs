@@ -1,35 +1,36 @@
 use crate::builder::blocks::BlockCmdResult;
-use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
+use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd, Builder};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
 use crate::Result;
-pub use processor::Outcome;
+pub use processor::TaskOutcome;
 use processor::Processor;
 
 mod processor;
 
-/*
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TaskType {
-    #[serde(rename = "block")]
-    Block,
-    #[serde(rename = "pallet_balances")]
-    PalletBalances,
-    #[serde(rename = "execute")]
-    Execute,
-    #[serde(rename = "genesis")]
-    Genesis,
-    #[cfg(test)]
-    #[serde(rename = "person")]
-    Person,
-    #[cfg(test)]
-    #[serde(rename = "animal")]
-    Animal,
+    PalletBalances(PalletBalancesCmd),
 }
-*/
 
-#[derive(Serialize, Deserialize)]
-enum TempType {
-    A(PalletBalancesCmd),
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TaskTypeOutcome {
+    PalletBalances(<PalletBalancesCmd as Builder>::Output),
+}
+
+trait TaskRunner<TaskOutcome> {
+    fn run(self) -> Result<TaskOutcome>;
+}
+
+impl TaskRunner<TaskTypeOutcome> for TaskType {
+    fn run(self) -> Result<TaskTypeOutcome> {
+        Ok(
+            match self {
+                TaskType::PalletBalances(t) => TaskTypeOutcome::PalletBalances(t.run()?)
+            }
+        )
+    }
 }
 
 pub struct ToolSpec;
@@ -37,7 +38,7 @@ pub struct ToolSpec;
 impl ToolSpec {
     #[rustfmt::skip]
     pub fn new(yaml: &str) -> Result<()> {
-        let mut proc = Processor::<TempType>::new(yaml)?;
+        let mut proc = Processor::<TaskType, TaskTypeOutcome>::new(yaml)?;
 
         /*
         for task in proc.tasks() {

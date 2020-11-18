@@ -20,8 +20,8 @@ macro_rules! module {
         #[serde(rename = $module_name)]
         pub struct $struct {
             #[structopt(subcommand)]
-            #[serde(flatten)]
-            call: $enum,
+            #[serde(skip)]
+            call: Option<$enum>,
         }
 
         #[derive(Debug, StructOpt, Serialize, Deserialize)]
@@ -39,7 +39,7 @@ macro_rules! module {
                 crate::builder::ModuleName::from($module_name)
             }
             fn function_name(&self) -> crate::builder::FunctionName {
-                match self.call {
+                match self.call.as_ref().unwrap() {
                     $( $enum::$func { .. } => crate::builder::FunctionName::from($func_name), )*
                 }
             }

@@ -2,7 +2,7 @@ use super::Result;
 use crate::primitives::runtime::{
     AccountId, CheckedExtrinsic, RuntimeCall, SignedExtra, UncheckedExtrinsic,
 };
-use crate::tool_spec::Outcome;
+use crate::tool_spec::TaskOutcome;
 use codec::Encode;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
@@ -50,14 +50,14 @@ impl FunctionName {
     }
 }
 
-trait Builder: Sized + ModuleInfo {
+pub trait Builder: Sized + ModuleInfo {
     type Output: Serialize;
 
     fn run(self) -> Result<Self::Output>;
     fn run_and_print(self) -> Result<()> {
         println!(
             "{}",
-            serde_json::to_string_pretty(&Outcome {
+            serde_json::to_string_pretty(&TaskOutcome {
                 task_name: Option::<String>::None,
                 module: self.module_name(),
                 function: self.function_name(),
