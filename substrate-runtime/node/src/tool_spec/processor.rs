@@ -22,7 +22,8 @@ pub struct TaskOutcome<Data> {
 
 impl<TaskType: DeserializeOwned> Processor<TaskType> {
     pub fn new(input: &str) -> Result<Self> {
-        let (global_var_pool, tasks) = global_parser(input)?;
+        let (global_var_pool, tasks) = global_parser::<TaskType>(input)?;
+        println!("GOT PASSED HERE");
 
         Ok(Processor {
             global_var_pool: global_var_pool,
@@ -154,10 +155,10 @@ fn global_parser<TaskType: DeserializeOwned>(
     Ok((global_var_pool, tasks))
 }
 
-fn task_parser<TaskType: DeserializeOwned, T: DeserializeOwned>(
+fn task_parser<TaskType: DeserializeOwned, Flattened: DeserializeOwned>(
     global_var_pool: &VarPool,
     mut properties: &mut Vec<(KeyType<TaskType>, serde_yaml::Value)>,
-) -> Result<(Vec<T>, Option<VariableName>)> {
+) -> Result<(Vec<Flattened>, Option<VariableName>)> {
     let mut register = None;
 
     let mut local_var_pool = VarPool::new();
@@ -230,7 +231,7 @@ fn task_parser<TaskType: DeserializeOwned, T: DeserializeOwned>(
         for (key, val) in properties.iter() {
             match key {
                 KeyType::TaskType(_) => {
-                    expanded.push(serde_yaml::from_value::<T>(val.clone())?);
+                    expanded.push(serde_yaml::from_value::<Flattened>(val.clone())?);
                 }
                 _ => {}
             }
@@ -499,6 +500,7 @@ enum Keyword {
     Vars,
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -933,3 +935,4 @@ mod tests {
         );
     }
 }
+*/

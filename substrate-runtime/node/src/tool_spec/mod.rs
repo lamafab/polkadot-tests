@@ -9,19 +9,21 @@ use serde::de::DeserializeOwned;
 mod processor;
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+//#[serde(rename_all = "snake_case")]
 pub enum TaskType {
+    #[serde(rename = "pallet_balances")]
     PalletBalances,
+    #[serde(rename = "block")]
     Block,
 }
 
 fn mapper(proc: &mut Processor<TaskType>, mut task: Task<TaskType>) -> Result<()> {
     match task.task_type()? {
         TaskType::PalletBalances => {
-            proc.parse_task::<PalletBalancesCmd, <PalletBalancesCmd as Builder>::Input>(task);
+            proc.parse_task::<PalletBalancesCmd, <PalletBalancesCmd as Builder>::Input>(task)?;
         }
         TaskType::Block => {
-            proc.parse_task::<BlockCmd, <BlockCmd as Builder>::Input>(task);
+            proc.parse_task::<BlockCmd, <BlockCmd as Builder>::Input>(task)?;
         }
     };
 
@@ -35,9 +37,10 @@ impl ToolSpec {
     pub fn new(yaml: &str) -> Result<()> {
         let mut proc = Processor::<TaskType>::new(yaml)?;
 
-        for mut tasks in proc.tasks() {
-
+        for task in proc.tasks() {
+            mapper(&mut proc, task)?;
         }
+
         /*
         for task in proc.tasks() {
             match task.task_type()? {
@@ -74,14 +77,15 @@ mod tests {
         ToolSpec::new(r#"
             - name: Build block
               block:
-                header:
-                  parent_hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
-                  number: "0x1"
-                  state_root: "0x29d0d972cd27cbc511e9589fcb7a4506d5eb6a9e8df205f00472e5ab354a4e17"
-                  extrinsics_root: "0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314"
-                  digest:
-                    logs: []
-                extrinsics: []
+                build:
+                  header:
+                    parent_hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
+                    number: "0x1"
+                    state_root: "0x29d0d972cd27cbc511e9589fcb7a4506d5eb6a9e8df205f00472e5ab354a4e17"
+                    extrinsics_root: "0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314"
+                    digest:
+                      logs: []
+                  extrinsics: []
         "#).unwrap();
     }
 
