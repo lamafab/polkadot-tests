@@ -1,6 +1,5 @@
 use crate::builder::{FunctionName, ModuleName, Builder};
 use crate::Result;
-use super::TaskRunner;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::cell::Cell;
@@ -8,10 +7,9 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::mem::drop;
 
-pub struct Processor<TaskType, Outcome> {
+pub struct Processor<TaskType> {
     global_var_pool: VarPool,
     tasks: Vec<Task<TaskType>>,
-    p: PhantomData<Outcome>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -22,14 +20,13 @@ pub struct TaskOutcome<Data> {
     pub data: Data,
 }
 
-impl<TaskType: TaskRunner<Outcome> + DeserializeOwned, Outcome: DeserializeOwned> Processor<TaskType, Outcome> {
+impl<TaskType: DeserializeOwned> Processor<TaskType> {
     pub fn new(input: &str) -> Result<Self> {
         let (global_var_pool, tasks) = global_parser(input)?;
 
         Ok(Processor {
             global_var_pool: global_var_pool,
             tasks: tasks,
-            p: PhantomData,
         })
     }
     pub fn process(self) -> Result<()> {

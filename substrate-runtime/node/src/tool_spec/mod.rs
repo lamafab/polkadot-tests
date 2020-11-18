@@ -10,27 +10,7 @@ mod processor;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskType {
-    PalletBalances(PalletBalancesCmd),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum TaskTypeOutcome {
-    PalletBalances(<PalletBalancesCmd as Builder>::Output),
-}
-
-trait TaskRunner<TaskOutcome> {
-    fn run(self) -> Result<TaskOutcome>;
-}
-
-impl TaskRunner<TaskTypeOutcome> for TaskType {
-    fn run(self) -> Result<TaskTypeOutcome> {
-        Ok(
-            match self {
-                TaskType::PalletBalances(t) => TaskTypeOutcome::PalletBalances(t.run()?)
-            }
-        )
-    }
+    PalletBalances,
 }
 
 pub struct ToolSpec;
@@ -38,7 +18,7 @@ pub struct ToolSpec;
 impl ToolSpec {
     #[rustfmt::skip]
     pub fn new(yaml: &str) -> Result<()> {
-        let mut proc = Processor::<TaskType, TaskTypeOutcome>::new(yaml)?;
+        let mut proc = Processor::<TaskType>::new(yaml)?;
 
         /*
         for task in proc.tasks() {
