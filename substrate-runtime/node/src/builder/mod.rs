@@ -21,7 +21,7 @@ pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
 pub use genesis::GenesisCmd;
 
-trait ModuleInfo {
+pub trait ModuleInfo {
     fn module_name(&self) -> ModuleName;
     fn function_name(&self) -> FunctionName;
 }

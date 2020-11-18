@@ -44,11 +44,30 @@ macro_rules! module {
             }
         }
 
+        impl crate::builder::ModuleInfo for $enum {
+            fn module_name(&self) -> crate::builder::ModuleName {
+                crate::builder::ModuleName::from($module_name)
+            }
+            fn function_name(&self) -> crate::builder::FunctionName {
+                match self {
+                    $( $enum::$func { .. } => crate::builder::FunctionName::from($func_name), )*
+                }
+            }
+        }
+
         impl crate::builder::Builder for $struct {
             type Input = $enum;
             type Output = $ret;
 
             fn run($self) -> crate::Result<Self::Output> $run_body
+        }
+
+        impl From<$enum> for $struct {
+            fn from(value: $enum) -> Self {
+                $struct {
+                    call: value,
+                }
+            }
         }
 
         // TODO: Delete this

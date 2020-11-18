@@ -1,4 +1,4 @@
-use crate::builder::{Builder, FunctionName, ModuleName};
+use crate::builder::{Builder, FunctionName, ModuleName, ModuleInfo};
 use crate::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -29,20 +29,28 @@ impl<TaskType: DeserializeOwned> Processor<TaskType> {
             tasks: tasks,
         })
     }
+    /// Returns the list of (un-flattened) tasks. NOTE: This call must only be
+    /// called once, since it wipes the origin.
     pub fn tasks(&mut self) -> Vec<Task<TaskType>> {
         take(&mut self.tasks)
     }
     pub fn parse_task<Command, Flattened>(&mut self, mut task: Task<TaskType>) -> Result<()>
     where
         Command: Builder + From<Flattened>,
-        Flattened: DeserializeOwned,
+        Flattened: ModuleInfo + DeserializeOwned,
         <Command as Builder>::Output: Clone,
     {
         let (flattened, register) =
             task_parser::<TaskType, Flattened>(&self.global_var_pool, &mut task.properties)?;
 
         let mut results = vec![];
+
+        let mut module_name = None;
+        let mut function_name = None;
         for task in flattened {
+            module_name = Some(task.module_name());
+            function_name = Some(task.function_name());
+
             results.push(Command::from(task).run()?);
         }
 
@@ -50,6 +58,15 @@ impl<TaskType: DeserializeOwned> Processor<TaskType> {
             self.global_var_pool
                 .insert_named(var_name, serde_yaml::to_value(results.clone())?);
         }
+
+        println!("{}",
+            serde_json::to_string_pretty(&TaskOutcome {
+                task_name: Some(task.name().to_string()),
+                module: module_name.unwrap(),
+                function: function_name.unwrap(),
+                data: results,
+            })?
+        );
 
         Ok(())
     }

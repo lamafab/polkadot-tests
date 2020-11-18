@@ -18,10 +18,10 @@ pub enum TaskType {
 fn mapper(proc: &mut Processor<TaskType>, mut task: Task<TaskType>) -> Result<()> {
     match task.task_type()? {
         TaskType::PalletBalances => {
-            //let (flattened, register) = proc.parse_task::<PalletBalancesCmd, <PalletBalancesCmd as Builder>::Input>(task);
+            proc.parse_task::<PalletBalancesCmd, <PalletBalancesCmd as Builder>::Input>(task);
         }
         TaskType::Block => {
-            //let (flattened, register) = proc.parse_task::<<BlockCmd as Builder>::Input>(task);
+            proc.parse_task::<BlockCmd, <BlockCmd as Builder>::Input>(task);
         }
     };
 
