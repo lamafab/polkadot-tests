@@ -26,11 +26,13 @@ module!(
         #[serde(rename = "build")]
         BuildBlock {
             #[structopt(flatten)]
+            #[serde(flatten)]
             spec_block: TxtBlock,
         },
         #[serde(rename = "execute")]
         ExecuteBlocks {
             #[structopt(short, long)]
+            #[serde(flatten)]
             blocks: Vec<RawBlock>,
         },
     }

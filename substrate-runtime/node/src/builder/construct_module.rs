@@ -28,7 +28,7 @@ macro_rules! module {
             $(
                 #[serde(rename = $func_name)]
                 $func {
-                        $($func_tt)*
+                    $($func_tt)*
                 },
             )*
         }
