@@ -8,21 +8,21 @@ use serde::de::DeserializeOwned;
 
 mod processor;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 //#[serde(rename_all = "snake_case")]
-pub enum TaskType {
+pub enum Temper {
     #[serde(rename = "pallet_balances")]
     PalletBalances,
     #[serde(rename = "block")]
     Block,
 }
 
-fn mapper(proc: &mut Processor<TaskType>, mut task: Task<TaskType>) -> Result<()> {
+fn mapper(proc: &mut Processor<Temper>, mut task: Task<Temper>) -> Result<()> {
     match task.task_type()? {
-        TaskType::PalletBalances => {
+        Temper::PalletBalances => {
             proc.parse_task::<PalletBalancesCmd, <PalletBalancesCmd as Builder>::Input>(task)?;
         }
-        TaskType::Block => {
+        Temper::Block => {
             proc.parse_task::<BlockCmd, <BlockCmd as Builder>::Input>(task)?;
         }
     };
@@ -35,7 +35,7 @@ pub struct ToolSpec;
 impl ToolSpec {
     #[rustfmt::skip]
     pub fn new(yaml: &str) -> Result<()> {
-        let mut proc = Processor::<TaskType>::new(yaml)?;
+        let mut proc = Processor::<Temper>::new(yaml)?;
 
         for task in proc.tasks() {
             mapper(&mut proc, task)?;
@@ -44,18 +44,18 @@ impl ToolSpec {
         /*
         for task in proc.tasks() {
             match task.task_type()? {
-                TaskType::Block => proc.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
+                Temper::Block => proc.run::<TxtBlock, BlockCmdResult, _>(task, |txt_block| {
                     //BlockCmd::build_block(txt_block).run()
                     unimplemented!()
                 }),
-                TaskType::Execute => proc.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
+                Temper::Execute => proc.run::<Vec<RawBlock>, BlockCmdResult, _>(task, |raw_blocks| {
                     //BlockCmd::execute_block(raw_blocks).run()
                     unimplemented!()
                 }),
-                TaskType::PalletBalances => proc.run::<PalletBalancesCmd, RawExtrinsic, _>(task, |call| {
+                Temper::PalletBalances => proc.run::<PalletBalancesCmd, RawExtrinsic, _>(task, |call| {
                     call.run()
                 }),
-                TaskType::Genesis => proc.run::<Vec<TxtAccountSeed>, TxtChainSpec, _>(task, |accounts| {
+                Temper::Genesis => proc.run::<Vec<TxtAccountSeed>, TxtChainSpec, _>(task, |accounts| {
                     GenesisCmd::accounts(accounts).run()
                 }),
                 #[cfg(test)]
