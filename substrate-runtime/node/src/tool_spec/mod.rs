@@ -1,9 +1,10 @@
 use crate::builder::blocks::BlockCmdResult;
-use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd, Builder};
+use crate::builder::{BlockCmd, Builder, GenesisCmd, PalletBalancesCmd};
 use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
 use crate::Result;
 pub use processor::TaskOutcome;
-use processor::Processor;
+use processor::{Processor, Task};
+use serde::de::DeserializeOwned;
 
 mod processor;
 
@@ -11,6 +12,20 @@ mod processor;
 #[serde(rename_all = "snake_case")]
 pub enum TaskType {
     PalletBalances,
+    Block,
+}
+
+fn mapper(proc: &mut Processor<TaskType>, mut task: Task<TaskType>) -> Result<()> {
+    match task.task_type()? {
+        TaskType::PalletBalances => {
+            //let (flattened, register) = proc.parse_task::<PalletBalancesCmd, <PalletBalancesCmd as Builder>::Input>(task);
+        }
+        TaskType::Block => {
+            //let (flattened, register) = proc.parse_task::<<BlockCmd as Builder>::Input>(task);
+        }
+    };
+
+    Ok(())
 }
 
 pub struct ToolSpec;
@@ -20,6 +35,9 @@ impl ToolSpec {
     pub fn new(yaml: &str) -> Result<()> {
         let mut proc = Processor::<TaskType>::new(yaml)?;
 
+        for mut tasks in proc.tasks() {
+
+        }
         /*
         for task in proc.tasks() {
             match task.task_type()? {

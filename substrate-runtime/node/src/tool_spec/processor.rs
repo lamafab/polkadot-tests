@@ -1,11 +1,11 @@
-use crate::builder::{FunctionName, ModuleName, Builder};
+use crate::builder::{Builder, FunctionName, ModuleName};
 use crate::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::mem::drop;
+use std::mem::{drop, take};
 
 pub struct Processor<TaskType> {
     global_var_pool: VarPool,
@@ -29,8 +29,31 @@ impl<TaskType: DeserializeOwned> Processor<TaskType> {
             tasks: tasks,
         })
     }
-    pub fn process(self) -> Result<()> {
+    pub fn tasks(&mut self) -> Vec<Task<TaskType>> {
+        take(&mut self.tasks)
+    }
+    pub fn parse_task<Command, Flattened>(&mut self, mut task: Task<TaskType>) -> Result<()>
+    where
+        Command: Builder + From<Flattened>,
+        Flattened: DeserializeOwned,
+        <Command as Builder>::Output: Clone,
+    {
+        let (flattened, register) =
+            task_parser::<TaskType, Flattened>(&self.global_var_pool, &mut task.properties)?;
 
+        let mut results = vec![];
+        for task in flattened {
+            results.push(Command::from(task).run()?);
+        }
+
+        if let Some(var_name) = register {
+            self.global_var_pool
+                .insert_named(var_name, serde_yaml::to_value(results.clone())?);
+        }
+
+        Ok(())
+    }
+    pub fn process(self) -> Result<()> {
         Ok(())
     }
     /*

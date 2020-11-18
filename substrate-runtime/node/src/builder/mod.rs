@@ -51,6 +51,7 @@ impl FunctionName {
 }
 
 pub trait Builder: Sized + ModuleInfo {
+    type Input: DeserializeOwned;
     type Output: Serialize;
 
     fn run(self) -> Result<Self::Output>;

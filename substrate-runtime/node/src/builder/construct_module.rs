@@ -24,7 +24,7 @@ macro_rules! module {
         }
 
         #[derive(Debug, StructOpt, Serialize, Deserialize)]
-        enum $enum {
+        pub enum $enum {
             $(
                 #[serde(rename = $func_name)]
                 $func {
@@ -45,6 +45,7 @@ macro_rules! module {
         }
 
         impl crate::builder::Builder for $struct {
+            type Input = $enum;
             type Output = $ret;
 
             fn run($self) -> crate::Result<Self::Output> $run_body
