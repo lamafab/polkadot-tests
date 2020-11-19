@@ -1,31 +1,86 @@
+use crate::builder::{Builder, FunctionName, ModuleInfo, ModuleName};
 use crate::Result;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::cell::Cell;
+use std::cmp::PartialEq;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::marker::PhantomData;
-use std::mem::drop;
+use std::mem::{drop, take};
 
-pub struct Processor {
+pub trait Mapper: Sized + Eq + PartialEq + Hash {
+    fn map(proc: &mut Processor<Self>, task: Task<Self>) -> Result<()>;
+}
+
+pub struct Processor<TaskType: Eq + Hash> {
     global_var_pool: VarPool,
-    tasks: Vec<Task>,
+    tasks: Vec<Task<TaskType>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Outcome<T> {
-    name: String,
-    data: Vec<T>,
+#[derive(Debug, Clone, Serialize)]
+pub struct TaskOutcome<Data> {
+    pub task_name: Option<String>,
+    pub module: ModuleName,
+    pub function: FunctionName,
+    pub data: Data,
 }
 
-impl Processor {
+impl<TaskType: Eq + PartialEq + Hash + DeserializeOwned + Mapper> Processor<TaskType> {
     pub fn new(input: &str) -> Result<Self> {
-        let (global_var_pool, tasks) = global_parser(input)?;
+        let (global_var_pool, tasks) = global_parser::<TaskType>(input)?;
 
         Ok(Processor {
             global_var_pool: global_var_pool,
             tasks: tasks,
         })
     }
+    pub fn process(mut self) -> Result<()>
+    {
+        for task in take(&mut self.tasks) {
+            TaskType::map(&mut self, task)?;
+        }
+
+        Ok(())
+    }
+    pub fn parse_task<Command>(&mut self, mut task: Task<TaskType>) -> Result<()>
+    where
+        Command: Builder + From<<Command as Builder>::Input>,
+        <Command as Builder>::Input: ModuleInfo,
+        <Command as Builder>::Output: Clone,
+    {
+        let (flattened, register) =
+            task_parser::<TaskType, <Command as Builder>::Input>(&self.global_var_pool, &mut task.properties)?;
+
+        let mut results = vec![];
+
+        let mut module_name = None;
+        let mut function_name = None;
+        for task in flattened {
+            module_name = Some(task.module_name());
+            function_name = Some(task.function_name());
+
+            results.push(Command::from(task).run()?);
+        }
+
+        if let Some(var_name) = register {
+            self.global_var_pool
+                .insert_named(var_name, serde_yaml::to_value(results.clone())?);
+        }
+
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&TaskOutcome {
+                task_name: Some(task.name().to_string()),
+                module: module_name.unwrap(),
+                function: function_name.unwrap(),
+                data: results,
+            })?
+        );
+
+        Ok(())
+    }
+    /*
     pub fn tasks(&self) -> Vec<Task> {
         // TODO: This should be done without cloning, but is currently
         // implemented in order to acquire a mutable call to `Processor::run`
@@ -59,10 +114,13 @@ impl Processor {
 
         Ok(())
     }
+    */
 }
 
-fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
-    let yaml_blocks: Vec<YamlItem> = serde_yaml::from_str(input)?;
+fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
+    input: &str,
+) -> Result<(VarPool, Vec<Task<TaskType>>)> {
+    let yaml_blocks: Vec<YamlItem<TaskType>> = serde_yaml::from_str(input)?;
 
     let mut tasks = vec![];
     let mut global_vars = None;
@@ -103,10 +161,10 @@ fn global_parser(input: &str) -> Result<(VarPool, Vec<Task>)> {
     Ok((global_var_pool, tasks))
 }
 
-fn task_parser<T: DeserializeOwned>(
+fn task_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned, Flattened: DeserializeOwned>(
     global_var_pool: &VarPool,
-    properties: &HashMap<KeyType, serde_yaml::Value>,
-) -> Result<(Vec<T>, Option<VariableName>)> {
+    mut properties: &mut HashMap<KeyType<TaskType>, serde_yaml::Value>,
+) -> Result<(Vec<Flattened>, Option<VariableName>)> {
     let mut register = None;
 
     let mut local_var_pool = VarPool::new();
@@ -115,7 +173,7 @@ fn task_parser<T: DeserializeOwned>(
     let mut vars = None;
     let mut loop_vars = None;
 
-    for (key, val) in properties {
+    for (key, val) in properties.iter() {
         match key {
             KeyType::TaskType(_) => {}
             KeyType::Keyword(keyword) => match keyword {
@@ -173,14 +231,13 @@ fn task_parser<T: DeserializeOwned>(
     let mut expanded = vec![];
 
     for index in 0..loop_count {
-        let mut loop_properties = properties.clone();
         let converter = VariableProcessor::new(global_var_pool, &local_var_pool, index);
-        converter.process_properties(&mut loop_properties)?;
+        converter.process_properties(&mut properties)?;
 
-        for (key, val) in loop_properties {
+        for (key, val) in properties.iter() {
             match key {
                 KeyType::TaskType(_) => {
-                    expanded.push(serde_yaml::from_value::<T>(val)?);
+                    expanded.push(serde_yaml::from_value::<Flattened>(val.clone())?);
                 }
                 _ => {}
             }
@@ -204,9 +261,9 @@ impl<'a> VariableProcessor<'a> {
             loop_index: index,
         }
     }
-    fn process_properties(
+    fn process_properties<TaskType: DeserializeOwned>(
         &self,
-        properties: &mut HashMap<KeyType, serde_yaml::Value>,
+        properties: &mut HashMap<KeyType<TaskType>, serde_yaml::Value>,
     ) -> Result<()> {
         for (_, val) in properties {
             self.process_yaml_value(val)?;
@@ -368,8 +425,8 @@ impl VarPool {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-enum YamlItem {
-    Task(Task),
+enum YamlItem<TaskType: Eq + PartialEq + Hash> {
+    Task(Task<TaskType>),
     Vars(Vars),
 }
 
@@ -400,13 +457,13 @@ impl VariableName {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Task {
+pub struct Task<TaskType: Eq + PartialEq + Hash> {
     name: String,
     #[serde(flatten)]
-    properties: HashMap<KeyType, serde_yaml::Value>,
+    properties: HashMap<KeyType<TaskType>, serde_yaml::Value>,
 }
 
-impl Task {
+impl<TaskType: Eq + PartialEq + Hash> Task<TaskType> {
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
@@ -434,7 +491,7 @@ impl Task {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
-enum KeyType {
+enum KeyType<TaskType> {
     TaskType(TaskType),
     Keyword(Keyword),
 }
@@ -449,24 +506,7 @@ enum Keyword {
     Vars,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub enum TaskType {
-    #[serde(rename = "block")]
-    Block,
-    #[serde(rename = "pallet_balances")]
-    PalletBalances,
-    #[serde(rename = "execute")]
-    Execute,
-    #[serde(rename = "genesis")]
-    Genesis,
-    #[cfg(test)]
-    #[serde(rename = "person")]
-    Person,
-    #[cfg(test)]
-    #[serde(rename = "animal")]
-    Animal,
-}
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -901,3 +941,4 @@ mod tests {
         );
     }
 }
+*/

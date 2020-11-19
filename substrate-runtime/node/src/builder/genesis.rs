@@ -12,45 +12,40 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::convert::{TryFrom, TryInto};
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-pub struct GenesisCmd {
-    #[structopt(subcommand)]
-    call: CallCmd,
-}
+module!(
+    #[serde(rename = "genesis")]
+    struct GenesisCmd;
+
+    enum CallCmd {
+        #[serde(rename = "default")]
+        Default {},
+        #[serde(rename = "accounts")]
+        Accounts {
+            #[structopt(short, long)]
+            accounts: Vec<TxtAccountSeed>,
+        },
+    }
+
+    impl GenesisCmd {
+        fn run(self) -> Result<TxtChainSpec> {
+            match self.call {
+                CallCmd::Default {} => gen_chain_spec_default()?.try_into(),
+                CallCmd::Accounts { accounts } => gen_chain_spec_with_accounts(
+                    accounts
+                        .into_iter()
+                        .map(|seed| ExtrinsicSigner::try_from(seed).map(|pair| pair.public().into()))
+                        .collect::<Result<Vec<AccountId>>>()?,
+                )?
+                .try_into(),
+            }
+        }
+    }
+);
 
 impl GenesisCmd {
     pub fn default() -> Self {
         GenesisCmd {
-            call: CallCmd::Default,
-        }
-    }
-    pub fn accounts(accounts: Vec<TxtAccountSeed>) -> Self {
-        GenesisCmd {
-            call: CallCmd::Accounts { accounts: accounts },
-        }
-    }
-}
-
-#[derive(Debug, StructOpt)]
-enum CallCmd {
-    Default,
-    Accounts {
-        #[structopt(short, long)]
-        accounts: Vec<TxtAccountSeed>,
-    },
-}
-
-impl GenesisCmd {
-    pub fn run(self) -> Result<TxtChainSpec> {
-        match self.call {
-            CallCmd::Default => gen_chain_spec_default()?.try_into(),
-            CallCmd::Accounts { accounts } => gen_chain_spec_with_accounts(
-                accounts
-                    .into_iter()
-                    .map(|seed| ExtrinsicSigner::try_from(seed).map(|pair| pair.public().into()))
-                    .collect::<Result<Vec<AccountId>>>()?,
-            )?
-            .try_into(),
+            call: CallCmd::Default {},
         }
     }
 }

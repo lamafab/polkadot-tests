@@ -16,7 +16,8 @@
 // limitations under the License.
 
 use crate::cli::{Cli, Subcommand};
-use crate::tool_spec::ToolSpec;
+use crate::tool_spec::run_tool_spec;
+use crate::builder::Builder;
 use crate::Result;
 use std::fs;
 use structopt::StructOpt;
@@ -26,13 +27,11 @@ pub fn run() -> Result<()> {
     let cli = Cli::from_args();
 
     if let Some(path) = cli.spec_path {
-        ToolSpec::new(&fs::read_to_string(path)?)?;
+        run_tool_spec(&fs::read_to_string(path)?)?;
     }
 
     match cli.subcommand {
-        Some(Subcommand::PalletBalances(cmd)) => {
-            cmd.run().map(|out| println!("{}", out.as_str()))?;
-        }
+        Some(Subcommand::PalletBalances(cmd)) => cmd.run_and_print()?,
         _ => {}
     };
 

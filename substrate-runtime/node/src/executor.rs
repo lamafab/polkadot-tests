@@ -1,5 +1,5 @@
 use super::Result;
-use crate::builder::GenesisCmd;
+use crate::builder::{GenesisCmd, Builder};
 use crate::primitives::runtime::Block;
 use crate::primitives::ChainSpec;
 use node_template_runtime::{BlockId, RuntimeApi, RuntimeApiImpl};

@@ -16,9 +16,10 @@ use structopt::StructOpt;
 pub mod runtime {
     // `AccountId` -> `sp_runtime::AccountId32`
     pub use node_template_runtime::{
-        AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber, Call as RuntimeCall,
-        CheckedExtrinsic, GenesisConfig, GrandpaConfig, Header, Runtime, Signature, SignedExtra,
-        SudoConfig, SystemConfig, TimestampCall, UncheckedExtrinsic, WASM_BINARY, Timestamp
+        AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber,
+        Call as RuntimeCall, CheckedExtrinsic, GenesisConfig, GrandpaConfig, Header, Runtime,
+        Signature, SignedExtra, SudoConfig, SystemConfig, Timestamp, TimestampCall,
+        UncheckedExtrinsic, WASM_BINARY,
     };
 }
 
@@ -127,12 +128,6 @@ impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawExtrinsic(String);
-
-impl RawExtrinsic {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
 
 impl From<UncheckedExtrinsic> for RawExtrinsic {
     fn from(val: UncheckedExtrinsic) -> Self {

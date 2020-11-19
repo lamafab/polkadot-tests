@@ -1,4 +1,4 @@
-use super::create_tx;
+use super::{create_tx};
 use crate::builder::genesis::get_account_id_from_seed;
 use crate::executor::ClientInMem;
 use crate::primitives::runtime::{Balance, BlockId, RuntimeCall};
@@ -31,53 +31,50 @@ impl FromStr for RawPrivateKey {
     }
 }
 
-#[derive(Debug, StructOpt, Serialize, Deserialize)]
-pub struct PalletBalancesCmd {
-    #[structopt(subcommand)]
-    #[serde(flatten)]
-    call: CallCmd,
-}
+module!(
+    #[serde(rename = "pallet_balances")]
+    struct PalletBalancesCmd;
 
-#[derive(Debug, StructOpt, Serialize, Deserialize)]
-enum CallCmd {
-    #[serde(rename = "transfer")]
-    Transfer {
-        #[structopt(short, long)]
-        genesis: Option<TxtChainSpec>,
-        #[structopt(short, long)]
-        from: TxtAccountSeed,
-        #[structopt(short, long)]
-        to: TxtAccountSeed,
-        #[structopt(short, long)]
-        balance: u64,
-    },
-}
+    enum CallCmd {
+        #[serde(rename = "transfer")]
+        Transfer {
+            #[structopt(short, long)]
+            genesis: Option<TxtChainSpec>,
+            #[structopt(short, long)]
+            from: TxtAccountSeed,
+            #[structopt(short, long)]
+            to: TxtAccountSeed,
+            #[structopt(short, long)]
+            balance: u64,
+        },
+    }
 
-impl PalletBalancesCmd {
-    pub fn run(self) -> Result<RawExtrinsic> {
-        match self.call {
-            CallCmd::Transfer {
-                genesis: _,
-                from,
-                to,
-                balance,
-            } => ClientInMem::new()?
-                .exec_context(&BlockId::Number(0), || {
-                    create_tx::<ExtrinsicSigner>(
-                        from.try_into()?,
-                        RuntimeCall::Balances(BalancesCall::transfer(
-                            get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
-                                to.as_str(),
-                            )
-                            .into(),
-                            balance as Balance,
-                        )),
-                        0,
-                    )
-                    .map(|t| RawExtrinsic::from(t))
-                    .map(Some)
-                })
-                .map(|extr| extr.unwrap()),
+    impl PalletBalancesCmd {
+        fn run(self) -> Result<RawExtrinsic> {
+            match self.call {
+                CallCmd::Transfer {
+                    genesis: _,
+                    from,
+                    to,
+                    balance,
+                } => ClientInMem::new()?
+                    .exec_context(&BlockId::Number(0), || {
+                        create_tx::<ExtrinsicSigner>(
+                            from.try_into()?,
+                            RuntimeCall::Balances(BalancesCall::transfer(
+                                get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
+                                    to.as_str(),
+                                )
+                                .into(),
+                                balance as Balance,
+                            )),
+                            0,
+                        )
+                        .map(|t| RawExtrinsic::from(t))
+                        .map(Some)
+                    })
+                    .map(|extr| extr.unwrap()),
+            }
         }
     }
-}
+);

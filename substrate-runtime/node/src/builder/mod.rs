@@ -1,8 +1,11 @@
 use super::Result;
 use crate::primitives::runtime::{
-    AccountId, RuntimeCall, CheckedExtrinsic, SignedExtra, UncheckedExtrinsic,
+    AccountId, RuntimeCall, SignedExtra, UncheckedExtrinsic,
 };
+use crate::tool_spec::TaskOutcome;
 use codec::Encode;
+use serde::de::DeserializeOwned;
+use serde::ser::Serialize;
 use sp_core::crypto::Pair;
 use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
@@ -16,10 +19,46 @@ pub use balances::PalletBalancesCmd;
 pub use blocks::BlockCmd;
 pub use genesis::GenesisCmd;
 
-fn create_inherent(function: RuntimeCall) -> CheckedExtrinsic {
-    CheckedExtrinsic {
-        signed: None,
-        function: function,
+pub trait ModuleInfo {
+    fn module_name(&self) -> ModuleName;
+    fn function_name(&self) -> FunctionName;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModuleName(&'static str);
+
+impl ModuleName {
+    const fn from(value: &'static str) -> Self {
+        ModuleName(value)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FunctionName(&'static str);
+
+impl FunctionName {
+    const fn from(value: &'static str) -> Self {
+        FunctionName(value)
+    }
+}
+
+pub trait Builder: Sized + ModuleInfo {
+    type Input: DeserializeOwned;
+    type Output: Serialize;
+
+    fn run(self) -> Result<Self::Output>;
+    fn run_and_print(self) -> Result<()> {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&TaskOutcome {
+                task_name: Option::<String>::None,
+                module: self.module_name(),
+                function: self.function_name(),
+                data: self.run()?,
+            })?
+        );
+
+        Ok(())
     }
 }
 
