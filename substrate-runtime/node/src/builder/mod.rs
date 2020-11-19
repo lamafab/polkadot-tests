@@ -11,8 +11,6 @@ use sp_runtime::generic::{Era, SignedPayload};
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::MultiSignature;
 
-#[macro_use]
-pub mod construct_module;
 pub mod balances;
 pub mod blocks;
 pub mod genesis;

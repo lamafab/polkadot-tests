@@ -76,3 +76,23 @@ macro_rules! module {
         }
     };
 }
+
+macro_rules! mapping {
+    ($($ident:ident => $cmd:ident,)*) => {
+        #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+        #[serde(rename_all = "snake_case")]
+        enum Mapping {
+            $($ident,)*
+        }
+
+        fn mapper(proc: &mut Processor<Mapping>, task: Task<Mapping>) -> Result<()> {
+            match task.task_type()? {
+                $(
+                    Mapping::$ident => proc.parse_task::<$cmd, <$cmd as Builder>::Input>(task)?,
+                )*
+            };
+
+            Ok(())
+        }
+    };
+}
