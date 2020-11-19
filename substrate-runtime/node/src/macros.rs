@@ -69,11 +69,6 @@ macro_rules! module {
                 }
             }
         }
-
-        // TODO: Delete this
-        impl $struct2 {
-            pub fn run($self) -> crate::Result<$ret> $run_body
-        }
     };
 }
 
@@ -85,14 +80,16 @@ macro_rules! mapping {
             $($ident,)*
         }
 
-        fn mapper(proc: &mut Processor<Mapping>, task: Task<Mapping>) -> Result<()> {
-            match task.task_type()? {
-                $(
-                    Mapping::$ident => proc.parse_task::<$cmd, <$cmd as Builder>::Input>(task)?,
-                )*
-            };
+        impl crate::tool_spec::Mapper for Mapping {
+            fn map(proc: &mut Processor<Mapping>, task: Task<Mapping>) -> Result<()> {
+                match task.task_type()? {
+                    $(
+                        Mapping::$ident => proc.parse_task::<$cmd>(task)?,
+                    )*
+                };
 
-            Ok(())
+                Ok(())
+            }
         }
     };
 }

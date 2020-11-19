@@ -9,6 +9,10 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem::{drop, take};
 
+pub trait Mapper: Sized + Eq + PartialEq + Hash {
+    fn map(proc: &mut Processor<Self>, task: Task<Self>) -> Result<()>;
+}
+
 pub struct Processor<TaskType: Eq + Hash> {
     global_var_pool: VarPool,
     tasks: Vec<Task<TaskType>>,
@@ -22,7 +26,7 @@ pub struct TaskOutcome<Data> {
     pub data: Data,
 }
 
-impl<TaskType: Eq + PartialEq + Hash + DeserializeOwned> Processor<TaskType> {
+impl<TaskType: Eq + PartialEq + Hash + DeserializeOwned + Mapper> Processor<TaskType> {
     pub fn new(input: &str) -> Result<Self> {
         let (global_var_pool, tasks) = global_parser::<TaskType>(input)?;
 
@@ -31,19 +35,22 @@ impl<TaskType: Eq + PartialEq + Hash + DeserializeOwned> Processor<TaskType> {
             tasks: tasks,
         })
     }
-    /// Returns the list of (un-flattened) tasks. NOTE: This call must only be
-    /// called once, since it wipes the origin.
-    pub fn tasks(&mut self) -> Vec<Task<TaskType>> {
-        take(&mut self.tasks)
+    pub fn process(mut self) -> Result<()>
+    {
+        for task in take(&mut self.tasks) {
+            TaskType::map(&mut self, task)?;
+        }
+
+        Ok(())
     }
-    pub fn parse_task<Command, Flattened>(&mut self, mut task: Task<TaskType>) -> Result<()>
+    pub fn parse_task<Command>(&mut self, mut task: Task<TaskType>) -> Result<()>
     where
-        Command: Builder + From<Flattened>,
-        Flattened: ModuleInfo + DeserializeOwned,
+        Command: Builder + From<<Command as Builder>::Input>,
+        <Command as Builder>::Input: ModuleInfo,
         <Command as Builder>::Output: Clone,
     {
         let (flattened, register) =
-            task_parser::<TaskType, Flattened>(&self.global_var_pool, &mut task.properties)?;
+            task_parser::<TaskType, <Command as Builder>::Input>(&self.global_var_pool, &mut task.properties)?;
 
         let mut results = vec![];
 
@@ -71,9 +78,6 @@ impl<TaskType: Eq + PartialEq + Hash + DeserializeOwned> Processor<TaskType> {
             })?
         );
 
-        Ok(())
-    }
-    pub fn process(self) -> Result<()> {
         Ok(())
     }
     /*
