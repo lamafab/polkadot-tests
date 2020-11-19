@@ -1,7 +1,5 @@
 use super::Result;
-use crate::primitives::runtime::{
-    AccountId, RuntimeCall, SignedExtra, UncheckedExtrinsic,
-};
+use crate::primitives::runtime::{AccountId, RuntimeCall, SignedExtra, UncheckedExtrinsic};
 use crate::tool_spec::TaskOutcome;
 use codec::Encode;
 use serde::de::DeserializeOwned;

@@ -45,8 +45,8 @@ pub mod runtime {
     pub use toolkit_runtime::{
         AccountId, Address, AuraConfig, Balance, BalancesConfig, Block, BlockId, BlockNumber,
         Call as RuntimeCall, CheckedExtrinsic, GenesisConfig, GrandpaConfig, Header, Runtime,
-        Signature, SignedExtra, SudoConfig, SystemConfig, Timestamp, TimestampCall,
-        UncheckedExtrinsic, WASM_BINARY, RuntimeApi, RuntimeApiImpl
+        RuntimeApi, RuntimeApiImpl, Signature, SignedExtra, SudoConfig, SystemConfig, Timestamp,
+        TimestampCall, UncheckedExtrinsic, WASM_BINARY,
     };
 }
 

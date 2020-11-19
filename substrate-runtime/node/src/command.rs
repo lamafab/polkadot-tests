@@ -15,9 +15,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::builder::Builder;
 use crate::cli::{Cli, Subcommand};
 use crate::tool_spec::run_tool_spec;
-use crate::builder::Builder;
 use crate::Result;
 use std::fs;
 use structopt::StructOpt;

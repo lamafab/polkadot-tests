@@ -1,7 +1,7 @@
 use super::Result;
-use crate::builder::{GenesisCmd, Builder};
-use crate::primitives::ChainSpec;
+use crate::builder::{Builder, GenesisCmd};
 use crate::primitives::runtime::{Block, BlockId, RuntimeApi, RuntimeApiImpl};
+use crate::primitives::ChainSpec;
 use sc_client_api::in_mem::Backend;
 use sc_executor::native_executor_instance;
 use sc_executor::{NativeExecutor, WasmExecutionMethod};

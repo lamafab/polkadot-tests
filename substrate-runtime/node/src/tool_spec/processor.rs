@@ -35,8 +35,7 @@ impl<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned + Mapper> Proces
             tasks: tasks,
         })
     }
-    pub fn process(mut self) -> Result<()>
-    {
+    pub fn process(mut self) -> Result<()> {
         for task in take(&mut self.tasks) {
             TaskType::map(&mut self, task)?;
         }
@@ -49,8 +48,10 @@ impl<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned + Mapper> Proces
         <Command as Builder>::Input: ModuleInfo,
         <Command as Builder>::Output: Clone,
     {
-        let (flattened, register) =
-            task_parser::<TaskType, <Command as Builder>::Input>(&self.global_var_pool, &mut task.properties)?;
+        let (flattened, register) = task_parser::<TaskType, <Command as Builder>::Input>(
+            &self.global_var_pool,
+            &mut task.properties,
+        )?;
 
         let mut results = vec![];
 
@@ -134,7 +135,10 @@ fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
 // The `task_parser` "expands" each tasks, such as creating a new tasks for each
 // iteration of a loop or searching through the global/local variable pool and
 // inserting those values.
-fn task_parser<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned, Flattened: DeserializeOwned>(
+fn task_parser<
+    TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned,
+    Flattened: DeserializeOwned,
+>(
     global_var_pool: &VarPool,
     properties: &HashMap<KeyType<TaskType>, serde_yaml::Value>,
 ) -> Result<(Vec<Flattened>, Option<VariableName>)> {
@@ -277,6 +281,58 @@ impl<'a> VariableProcessor<'a> {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct TempVar {
+    chain: Vec<VariableType>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum VariableType {
+    Name(String),
+    Index(usize),
+}
+
+impl TempVar {
+    fn new(name: &str) -> Result<Option<Self>> {
+        // Check if input qualifies as a variable
+        let name = if name.contains("{{") && name.contains("}}") {
+            name.replace("{{", "").replace("}}", "").trim().to_string()
+        } else {
+            return Ok(None);
+        };
+
+        // Process variable
+        let mut chain = vec![];
+        let parts: Vec<&str> = name.split('.').collect();
+
+        for part in parts {
+            let subparts: Vec<&str> = part.split('[').collect();
+
+            let mut first = true;
+            for sub in subparts {
+                // First item is a regular name.
+                if first {
+                    chain.push(VariableType::Name(sub.to_string()));
+                    first = false;
+                    continue;
+                }
+
+                // Any other items are (array) indexes.
+                chain.push(VariableType::Index(
+                    sub.trim_matches(']').parse::<usize>().map_err(|_| {
+                        failure::err_msg(format!(
+                            "Expected a number as index in variable: {}",
+                            part
+                        ))
+                    })?,
+                ));
+            }
+        }
+
+        Ok(Some(TempVar { chain: chain }))
     }
 }
 
@@ -494,7 +550,106 @@ mod tests {
     /// Convenience function for processing tests.
     fn parse<T: DeserializeOwned>(input: &str) -> Vec<T> {
         let (var_pool, mut tasks) = global_parser::<TaskType>(input).unwrap();
-        task_parser::<TaskType, T>(&var_pool, &mut tasks[0].properties).unwrap().0
+        task_parser::<TaskType, T>(&var_pool, &mut tasks[0].properties)
+            .unwrap()
+            .0
+    }
+
+    #[test]
+    fn nested_variables_simple_names() {
+        let res = TempVar::new("item").unwrap();
+        assert!(res.is_none());
+
+        let res = TempVar::new("{{ item }}").unwrap().unwrap();
+        assert_eq!(
+            res,
+            TempVar {
+                chain: vec![VariableType::Name("item".to_string())]
+            }
+        );
+
+        let res = TempVar::new("{{ item.name }}").unwrap().unwrap();
+        assert_eq!(
+            res,
+            TempVar {
+                chain: vec![
+                    VariableType::Name("item".to_string()),
+                    VariableType::Name("name".to_string())
+                ]
+            }
+        );
+
+        let res = TempVar::new("{{ item.name.surname }}").unwrap().unwrap();
+        assert_eq!(
+            res,
+            TempVar {
+                chain: vec![
+                    VariableType::Name("item".to_string()),
+                    VariableType::Name("name".to_string()),
+                    VariableType::Name("surname".to_string())
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn nested_variables_indexes() {
+        let res = TempVar::new("{{ item.name[0] }}").unwrap().unwrap();
+        assert_eq!(
+            res,
+            TempVar {
+                chain: vec![
+                    VariableType::Name("item".to_string()),
+                    VariableType::Name("name".to_string()),
+                    VariableType::Index(0)
+                ]
+            }
+        );
+
+        let res = TempVar::new("{{ item.name[0].surname }}").unwrap().unwrap();
+        assert_eq!(
+            res,
+            TempVar {
+                chain: vec![
+                    VariableType::Name("item".to_string()),
+                    VariableType::Name("name".to_string()),
+                    VariableType::Index(0),
+                    VariableType::Name("surname".to_string()),
+                ]
+            }
+        );
+
+        let res = TempVar::new("{{ item.name[0][4] }}").unwrap().unwrap();
+        assert_eq!(
+            res,
+            TempVar {
+                chain: vec![
+                    VariableType::Name("item".to_string()),
+                    VariableType::Name("name".to_string()),
+                    VariableType::Index(0),
+                    VariableType::Index(4)
+                ]
+            }
+        );
+
+        let res = TempVar::new("{{ item.name[0][4].categories.parts[1][1] }}")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            res,
+            TempVar {
+                chain: vec![
+                    VariableType::Name("item".to_string()),
+                    VariableType::Name("name".to_string()),
+                    VariableType::Index(0),
+                    VariableType::Index(4),
+                    VariableType::Name("categories".to_string()),
+                    VariableType::Name("parts".to_string()),
+                    VariableType::Index(1),
+                    VariableType::Index(1)
+                ]
+            }
+        );
     }
 
     #[test]

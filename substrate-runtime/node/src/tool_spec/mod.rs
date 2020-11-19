@@ -1,4 +1,3 @@
-
 use crate::builder::{BlockCmd, PalletBalancesCmd};
 
 use crate::Result;
@@ -8,7 +7,7 @@ use std::cmp::PartialEq;
 use std::hash::Hash;
 
 mod processor;
-pub use processor::{TaskOutcome, Mapper};
+pub use processor::{Mapper, TaskOutcome};
 
 mapping!(
     PalletBalances => PalletBalancesCmd,
