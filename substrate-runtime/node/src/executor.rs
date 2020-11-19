@@ -1,8 +1,7 @@
 use super::Result;
 use crate::builder::{GenesisCmd, Builder};
-use crate::primitives::runtime::Block;
 use crate::primitives::ChainSpec;
-use node_template_runtime::{BlockId, RuntimeApi, RuntimeApiImpl};
+use crate::primitives::runtime::{Block, BlockId, RuntimeApi, RuntimeApiImpl};
 use sc_client_api::in_mem::Backend;
 use sc_executor::native_executor_instance;
 use sc_executor::{NativeExecutor, WasmExecutionMethod};
@@ -16,8 +15,8 @@ use std::convert::TryFrom;
 // Native executor instance.
 native_executor_instance!(
     pub Executor,
-    node_template_runtime::api::dispatch,
-    node_template_runtime::native_version,
+    toolkit_runtime::api::dispatch,
+    toolkit_runtime::native_version,
     frame_benchmarking::benchmarking::HostFunctions,
 );
 

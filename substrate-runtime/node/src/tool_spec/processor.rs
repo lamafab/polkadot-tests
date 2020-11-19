@@ -80,41 +80,6 @@ impl<TaskType: Eq + PartialEq + Hash + DeserializeOwned + Mapper> Processor<Task
 
         Ok(())
     }
-    /*
-    pub fn tasks(&self) -> Vec<Task> {
-        // TODO: This should be done without cloning, but is currently
-        // implemented in order to acquire a mutable call to `Processor::run`
-        // from within `ToolSpec` (module root).
-        self.tasks.clone()
-    }
-    pub fn run<T: DeserializeOwned, R: Serialize + Clone, F: Fn(T) -> Result<R>>(
-        &mut self,
-        task: Task,
-        f: F,
-    ) -> Result<()> {
-        let (tasks, register) = task_parser(&self.global_var_pool, &task.properties)?;
-        let mut results = vec![];
-
-        for task in tasks {
-            results.push(f(task)?);
-        }
-
-        if let Some(var_name) = register {
-            self.global_var_pool
-                .insert_named(var_name, serde_yaml::to_value(results.clone())?);
-        }
-
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&Outcome {
-                name: task.name().to_string(),
-                data: results,
-            })?
-        );
-
-        Ok(())
-    }
-    */
 }
 
 fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
@@ -506,15 +471,21 @@ enum Keyword {
     Vars,
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde::de::DeserializeOwned;
 
+    #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+    #[serde(rename_all = "snake_case")]
+    enum TaskType {
+        Person,
+    }
+
+    /// Convenience function for processing tests.
     fn parse<T: DeserializeOwned>(input: &str) -> Vec<T> {
-        let (var_pool, tasks) = global_parser(input).unwrap();
-        task_parser(&var_pool, &tasks[0].properties).unwrap().0
+        let (var_pool, tasks) = global_parser::<TaskType>(input).unwrap();
+        task_parser::<TaskType, T>(&var_pool, &tasks[0].properties).unwrap().0
     }
 
     #[test]
@@ -941,4 +912,3 @@ mod tests {
         );
     }
 }
-*/

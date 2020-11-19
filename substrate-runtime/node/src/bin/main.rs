@@ -1,4 +1,4 @@
-use node_template::{run, Result};
+use toolkit::{run, Result};
 
 fn main() -> Result<()> {
     run()

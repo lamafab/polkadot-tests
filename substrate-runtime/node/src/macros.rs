@@ -72,6 +72,20 @@ macro_rules! module {
     };
 }
 
+macro_rules! from_str {
+    ($($name:ident)*) => {
+        $(
+            impl FromStr for $name {
+                type Err = failure::Error;
+
+                fn from_str(val: &str) -> Result<Self> {
+                    Ok($name(val.to_string()))
+                }
+            }
+        )*
+    };
+}
+
 macro_rules! mapping {
     ($($ident:ident => $cmd:ident,)*) => {
         #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
