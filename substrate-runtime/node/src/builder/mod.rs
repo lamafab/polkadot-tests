@@ -1,6 +1,6 @@
 use super::Result;
 use crate::primitives::runtime::{
-    AccountId, CheckedExtrinsic, RuntimeCall, SignedExtra, UncheckedExtrinsic,
+    AccountId, RuntimeCall, SignedExtra, UncheckedExtrinsic,
 };
 use crate::tool_spec::TaskOutcome;
 use codec::Encode;
@@ -31,9 +31,6 @@ impl ModuleName {
     const fn from(value: &'static str) -> Self {
         ModuleName(value)
     }
-    fn as_str(&self) -> &'static str {
-        &self.0
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,9 +39,6 @@ pub struct FunctionName(&'static str);
 impl FunctionName {
     const fn from(value: &'static str) -> Self {
         FunctionName(value)
-    }
-    fn as_str(&self) -> &'static str {
-        &self.0
     }
 }
 

@@ -1,10 +1,7 @@
-use super::create_tx;
 use crate::executor::ClientInMem;
-use crate::primitives::runtime::{Block, BlockId, Runtime, RuntimeCall, Timestamp, TimestampCall};
-use crate::primitives::{ExtrinsicSigner, RawBlock, TxtAccountSeed, TxtBlock};
+use crate::primitives::runtime::{Block, BlockId, Timestamp};
+use crate::primitives::{RawBlock, TxtBlock};
 use crate::Result;
-use codec::Encode;
-use pallet_timestamp::Module;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
 use sp_inherents::InherentData;
@@ -88,7 +85,7 @@ module!(
                         })?;
 
                     for e in x {
-                        rt.apply_extrinsic(&at, e).map_err(|err| {
+                        let _ = rt.apply_extrinsic(&at, e).map_err(|err| {
                             failure::err_msg(format!("Failed to apply extrinsic: {}", err))
                         })?;
                     }

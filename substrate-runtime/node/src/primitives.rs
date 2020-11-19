@@ -129,12 +129,6 @@ impl TryFrom<TxtAccountSeed> for ExtrinsicSigner {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawExtrinsic(String);
 
-impl RawExtrinsic {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
 impl From<UncheckedExtrinsic> for RawExtrinsic {
     fn from(val: UncheckedExtrinsic) -> Self {
         RawExtrinsic(hex::encode(val.encode()))

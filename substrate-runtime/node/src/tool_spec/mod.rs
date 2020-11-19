@@ -1,9 +1,9 @@
-use crate::builder::blocks::BlockCmdResult;
-use crate::builder::{BlockCmd, Builder, GenesisCmd, PalletBalancesCmd};
-use crate::primitives::{RawBlock, RawExtrinsic, TxtAccountSeed, TxtBlock, TxtChainSpec};
+
+use crate::builder::{BlockCmd, PalletBalancesCmd};
+
 use crate::Result;
 use processor::{Processor, Task};
-use serde::de::DeserializeOwned;
+
 use std::cmp::PartialEq;
 use std::hash::Hash;
 
@@ -16,9 +16,7 @@ mapping!(
 );
 
 pub fn run_tool_spec(yaml: &str) -> Result<()> {
-    let mut proc = Processor::<Mapping>::new(yaml)?.process();
-
-    Ok(())
+    Processor::<Mapping>::new(yaml)?.process()
 }
 
 #[cfg(test)]

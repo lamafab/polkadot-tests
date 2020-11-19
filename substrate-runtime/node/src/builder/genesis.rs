@@ -48,11 +48,6 @@ impl GenesisCmd {
             call: CallCmd::Default {},
         }
     }
-    pub fn accounts(accounts: Vec<TxtAccountSeed>) -> Self {
-        GenesisCmd {
-            call: CallCmd::Accounts { accounts: accounts },
-        }
-    }
 }
 
 /// Generate a crypto pair from seed.
