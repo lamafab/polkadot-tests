@@ -82,6 +82,10 @@ impl<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned + Mapper> Proces
     }
 }
 
+// The `global_parser` parses tasks and global variables and inserts those
+// variables into the global variable pool. It does however not "expand" the
+// tasks (such as recurring tasks which have loops, or having to insert
+// variables). That job is done by the `task_parser`.
 fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
     input: &str,
 ) -> Result<(VarPool, Vec<Task<TaskType>>)> {
@@ -119,6 +123,7 @@ fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
     // Drop converter so variables can be inserted into pool.
     drop(converter);
 
+    // Insert global variables into the global variable pool.
     if let Some(vars) = global_vars {
         global_var_pool.insert(vars);
     }
@@ -126,9 +131,12 @@ fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
     Ok((global_var_pool, tasks))
 }
 
+// The `task_parser` "expands" each tasks, such as creating a new tasks for each
+// iteration of a loop or searching through the global/local variable pool and
+// inserting those values.
 fn task_parser<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned, Flattened: DeserializeOwned>(
     global_var_pool: &VarPool,
-    properties: &mut HashMap<KeyType<TaskType>, serde_yaml::Value>,
+    properties: &HashMap<KeyType<TaskType>, serde_yaml::Value>,
 ) -> Result<(Vec<Flattened>, Option<VariableName>)> {
     let mut register = None;
 
@@ -138,7 +146,7 @@ fn task_parser<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned, Flatt
     let mut vars = None;
     let mut loop_vars = None;
 
-    for (key, val) in properties.iter() {
+    for (key, val) in properties {
         match key {
             KeyType::TaskType(_) => {}
             KeyType::Keyword(keyword) => match keyword {
