@@ -25,7 +25,7 @@ mod tests {
 
     #[test]
     fn build_block() {
-        ToolSpec::new(r#"
+        run_tool_spec(r#"
             - name: Build block
               block:
                 build:
@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn pallet_balances() {
-        ToolSpec::new(
+        run_tool_spec(
             r#"
             - name: Balance transfer
               pallet_balances:
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn genesis() {
-        ToolSpec::new(
+        run_tool_spec(
             r#"
             - name: Create genesis
               genesis:

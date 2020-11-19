@@ -26,7 +26,7 @@ pub struct TaskOutcome<Data> {
     pub data: Data,
 }
 
-impl<TaskType: Eq + PartialEq + Hash + DeserializeOwned + Mapper> Processor<TaskType> {
+impl<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned + Mapper> Processor<TaskType> {
     pub fn new(input: &str) -> Result<Self> {
         let (global_var_pool, tasks) = global_parser::<TaskType>(input)?;
 
@@ -126,9 +126,9 @@ fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
     Ok((global_var_pool, tasks))
 }
 
-fn task_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned, Flattened: DeserializeOwned>(
+fn task_parser<TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned, Flattened: DeserializeOwned>(
     global_var_pool: &VarPool,
-    mut properties: &mut HashMap<KeyType<TaskType>, serde_yaml::Value>,
+    properties: &mut HashMap<KeyType<TaskType>, serde_yaml::Value>,
 ) -> Result<(Vec<Flattened>, Option<VariableName>)> {
     let mut register = None;
 
@@ -196,10 +196,11 @@ fn task_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned, Flattened: De
     let mut expanded = vec![];
 
     for index in 0..loop_count {
+        let mut loop_properties = properties.clone();
         let converter = VariableProcessor::new(global_var_pool, &local_var_pool, index);
-        converter.process_properties(&mut properties)?;
+        converter.process_properties(&mut loop_properties)?;
 
-        for (key, val) in properties.iter() {
+        for (key, val) in loop_properties {
             match key {
                 KeyType::TaskType(_) => {
                     expanded.push(serde_yaml::from_value::<Flattened>(val.clone())?);
@@ -484,8 +485,8 @@ mod tests {
 
     /// Convenience function for processing tests.
     fn parse<T: DeserializeOwned>(input: &str) -> Vec<T> {
-        let (var_pool, tasks) = global_parser::<TaskType>(input).unwrap();
-        task_parser::<TaskType, T>(&var_pool, &tasks[0].properties).unwrap().0
+        let (var_pool, mut tasks) = global_parser::<TaskType>(input).unwrap();
+        task_parser::<TaskType, T>(&var_pool, &mut tasks[0].properties).unwrap().0
     }
 
     #[test]
