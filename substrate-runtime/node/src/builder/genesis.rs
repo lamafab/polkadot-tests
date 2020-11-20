@@ -2,7 +2,7 @@ use crate::primitives::runtime::{
     AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
     SystemConfig, WASM_BINARY,
 };
-use crate::primitives::{ChainSpec, ExtrinsicSigner, TxtAccountSeed, TxtChainSpec};
+use crate::primitives::{ChainSpec, ExtrinsicSigner, SpecAccountSeed, SpecChainSpec};
 use crate::Result;
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -22,12 +22,12 @@ module!(
         #[serde(rename = "custom")]
         Custom {
             #[structopt(short, long)]
-            accounts: Vec<TxtAccountSeed>,
+            accounts: Vec<SpecAccountSeed>,
         },
     }
 
     impl GenesisCmd {
-        fn run(self) -> Result<TxtChainSpec> {
+        fn run(self) -> Result<SpecChainSpec> {
             match self.call {
                 CallCmd::Default {} => gen_chain_spec_default()?.try_into(),
                 CallCmd::Custom { accounts } => gen_chain_spec_with_accounts(
@@ -74,9 +74,9 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 
 pub fn gen_chain_spec_default() -> Result<ChainSpec> {
     gen_chain_spec_with_accounts(vec![
-        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("alice"),
-        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("bob"),
-        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("dave"),
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("//alice"),
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("//bob"),
+        get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>("//dave"),
     ])
 }
 

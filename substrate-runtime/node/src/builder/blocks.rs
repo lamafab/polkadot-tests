@@ -1,6 +1,6 @@
 use crate::executor::ClientInMem;
 use crate::primitives::runtime::{Block, BlockId, Timestamp};
-use crate::primitives::{RawBlock, TxtBlock};
+use crate::primitives::{RawBlock, SpecBlock};
 use crate::Result;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
@@ -26,7 +26,7 @@ module!(
         BuildBlock {
             #[structopt(flatten)]
             #[serde(flatten)]
-            spec_block: TxtBlock,
+            spec_block: SpecBlock,
         },
         #[serde(rename = "execute")]
         ExecuteBlocks {

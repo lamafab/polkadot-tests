@@ -2,7 +2,7 @@ use super::create_tx;
 use crate::builder::genesis::get_account_id_from_seed;
 use crate::executor::ClientInMem;
 use crate::primitives::runtime::{Balance, BlockId, RuntimeCall};
-use crate::primitives::{ExtrinsicSigner, RawExtrinsic, TxtAccountSeed, TxtChainSpec};
+use crate::primitives::{ExtrinsicSigner, RawExtrinsic, SpecAccountSeed, SpecChainSpec};
 use crate::Result;
 use pallet_balances::Call as BalancesCall;
 use sp_core::crypto::Pair;
@@ -39,11 +39,11 @@ module!(
         #[serde(rename = "transfer")]
         Transfer {
             #[structopt(short, long)]
-            genesis: Option<TxtChainSpec>,
+            genesis: Option<SpecChainSpec>,
             #[structopt(short, long)]
-            from: TxtAccountSeed,
+            from: SpecAccountSeed,
             #[structopt(short, long)]
-            to: TxtAccountSeed,
+            to: SpecAccountSeed,
             #[structopt(short, long)]
             balance: u64,
         },
