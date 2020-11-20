@@ -19,6 +19,7 @@ pub struct Processor<TaskType: Eq + Hash> {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TaskOutcome<Data> {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub task_name: Option<String>,
     pub module: ModuleName,
     pub function: FunctionName,
