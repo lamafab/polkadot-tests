@@ -136,11 +136,11 @@ fn global_parser<TaskType: Eq + PartialEq + Hash + DeserializeOwned>(
 // inserting those values.
 fn task_parser<
     TaskType: Eq + PartialEq + Hash + Clone + DeserializeOwned,
-    Flattened: DeserializeOwned,
+    Expanded: DeserializeOwned,
 >(
     global_var_pool: &VarPool,
     properties: &HashMap<KeyType<TaskType>, serde_yaml::Value>,
-) -> Result<(Vec<Flattened>, Option<VariableName>)> {
+) -> Result<(Vec<Expanded>, Option<VariableName>)> {
     let mut register = None;
 
     let mut local_var_pool = VarPool::new();
@@ -220,7 +220,7 @@ fn task_parser<
         for (key, val) in loop_properties {
             match key {
                 KeyType::TaskType(_) => {
-                    expanded.push(serde_yaml::from_value::<Flattened>(val.clone())?);
+                    expanded.push(serde_yaml::from_value::<Expanded>(val.clone())?);
                 }
                 _ => {}
             }

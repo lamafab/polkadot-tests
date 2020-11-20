@@ -73,7 +73,7 @@ macro_rules! module {
 }
 
 macro_rules! from_str {
-    ($($name:ident)*) => {
+    ($($name:ident,)*) => {
         $(
             impl FromStr for $name {
                 type Err = failure::Error;

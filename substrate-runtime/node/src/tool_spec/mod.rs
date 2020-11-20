@@ -1,4 +1,4 @@
-use crate::builder::{BlockCmd, PalletBalancesCmd};
+use crate::builder::{BlockCmd, GenesisCmd, PalletBalancesCmd};
 
 use crate::Result;
 use processor::{Processor, Task};
@@ -12,6 +12,7 @@ pub use processor::{Mapper, TaskOutcome};
 mapping!(
     PalletBalances => PalletBalancesCmd,
     Block => BlockCmd,
+    Genesis => GenesisCmd,
 );
 
 pub fn run_tool_spec(yaml: &str) -> Result<()> {
@@ -54,19 +55,18 @@ mod tests {
         .unwrap()
     }
 
-    /*
     #[test]
     fn genesis() {
         run_tool_spec(
             r#"
             - name: Create genesis
               genesis:
-                - alice
-                - bob
-                - eve
+                accounts:
+                  - alice
+                  - bob
+                  - eve
         "#,
         )
         .unwrap()
     }
-    */
 }

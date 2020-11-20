@@ -14,7 +14,7 @@ use std::str::FromStr;
 use structopt::StructOpt;
 
 /*
-Runtime types:
+# RUNTIME TYPES
 
 /// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
 pub type Signature = MultiSignature;
@@ -50,12 +50,7 @@ pub mod runtime {
     };
 }
 
-from_str!(
-    TxtHash
-    TxtBlockNumber
-    TxtExtrinsic
-    TxtAccountSeed
-);
+from_str!(TxtHash, TxtBlockNumber, TxtExtrinsic, TxtAccountSeed,);
 
 pub type ChainSpec = GenericChainSpec<runtime::GenesisConfig>;
 

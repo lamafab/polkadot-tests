@@ -22,6 +22,7 @@ module!(
         #[serde(rename = "accounts")]
         Accounts {
             #[structopt(short, long)]
+            #[serde(flatten)]
             accounts: Vec<TxtAccountSeed>,
         },
     }
