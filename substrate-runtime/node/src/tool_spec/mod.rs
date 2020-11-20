@@ -61,10 +61,11 @@ mod tests {
             r#"
             - name: Create genesis
               genesis:
-                accounts:
-                  - alice
-                  - bob
-                  - eve
+                custom:
+                  accounts:
+                    - alice
+                    - bob
+                    - eve
         "#,
         )
         .unwrap()

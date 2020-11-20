@@ -19,10 +19,9 @@ module!(
     enum CallCmd {
         #[serde(rename = "default")]
         Default {},
-        #[serde(rename = "accounts")]
-        Accounts {
+        #[serde(rename = "custom")]
+        Custom {
             #[structopt(short, long)]
-            #[serde(flatten)]
             accounts: Vec<TxtAccountSeed>,
         },
     }
@@ -31,7 +30,7 @@ module!(
         fn run(self) -> Result<TxtChainSpec> {
             match self.call {
                 CallCmd::Default {} => gen_chain_spec_default()?.try_into(),
-                CallCmd::Accounts { accounts } => gen_chain_spec_with_accounts(
+                CallCmd::Custom { accounts } => gen_chain_spec_with_accounts(
                     accounts
                         .into_iter()
                         .map(|seed| ExtrinsicSigner::try_from(seed).map(|pair| pair.public().into()))
