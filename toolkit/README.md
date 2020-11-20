@@ -1,6 +1,6 @@
 # Toolkit
 
-This toolkit is a work-in-progress utility in order to create a script polkadot transactions and test cases.
+This toolkit is a work-in-progress utility in order to create Polkadot transactions or to create script-able workflows and test cases.
 
 ## Building
 
