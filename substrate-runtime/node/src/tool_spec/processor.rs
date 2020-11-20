@@ -6,7 +6,6 @@ use std::cell::Cell;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::mem::{drop, take};
 
 pub trait Mapper: Sized + Eq + PartialEq + Hash {
@@ -150,6 +149,9 @@ fn task_parser<
     let mut vars = None;
     let mut loop_vars = None;
 
+    // First, just collect the necessary information in order to be able to
+    // expand the tasks. This includes variables, loops and any special
+    // keywords.
     for (key, val) in properties {
         match key {
             KeyType::TaskType(_) => {}
@@ -197,6 +199,7 @@ fn task_parser<
     // Drop converter so variables can be inserted into pool.
     drop(converter);
 
+    // Insert variables into the pool.
     if let Some(vars) = vars {
         local_var_pool.insert(vars);
     }
@@ -207,8 +210,10 @@ fn task_parser<
 
     let mut expanded = vec![];
 
+    // Expand all tasks, where variables and loops are all layed out.
     for index in 0..loop_count {
         let mut loop_properties = properties.clone();
+        // Created an new variable processor with the new `index`.
         let converter = VariableProcessor::new(global_var_pool, &local_var_pool, index);
         converter.process_properties(&mut loop_properties)?;
 
@@ -239,6 +244,7 @@ impl<'a> VariableProcessor<'a> {
             loop_index: index,
         }
     }
+    // Convenience function for quickly processing task properties.
     fn process_properties<TaskType: DeserializeOwned>(
         &self,
         properties: &mut HashMap<KeyType<TaskType>, serde_yaml::Value>,
@@ -249,25 +255,27 @@ impl<'a> VariableProcessor<'a> {
 
         Ok(())
     }
-    #[rustfmt::skip]
     fn process_yaml_value(&self, value: &mut serde_yaml::Value) -> Result<()> {
-        if let Some(v) = value.as_str() {
-            if v.contains("{{") && v.contains("}}") {
-                let v = v.replace("{{", "").replace("}}", "");
-                let var_name = VariableName(v.trim().to_string());
-
-                let var = if let Some(var) = self.local_var_pool.get(self.loop_index, &var_name) {
+        if let Some(string) = value.as_str() {
+            // Check whether the value is a variable. If not, then just ignore.
+            if let Some(var_chain) = VariableChain::new(string)? {
+                // Check the local variable pool first (local pool overwrites
+                // the global pool). If nothing was found, then check to global
+                // variable pool.
+                let var = if let Some(var) = self.local_var_pool.get(self.loop_index, &var_chain) {
                     var
-                } else if let Some(var) = self.global_var_pool.get(self.loop_index, &var_name) {
+                } else if let Some(var) = self.global_var_pool.get(self.loop_index, &var_chain) {
                     var
                 } else {
                     return Err(failure::err_msg(format!(
                         "Variable \"{}\" not found",
-                        var_name.0
+                        string
                     )));
                 };
 
-                *value = var;
+                // Overwrite the variable with the actual value.
+                *value = var.clone();
+                // Process the actual value; it might contain variables itself.
                 self.process_yaml_value(value)?;
             }
         } else if let Some(seq) = value.as_sequence_mut() {
@@ -285,17 +293,21 @@ impl<'a> VariableProcessor<'a> {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct TempVar {
+struct VariableChain {
     chain: Vec<VariableType>,
+    is_loop: bool,
+    // Specifies the current position in the nested variable chain.
+    cursor: Cell<usize>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum VariableType {
-    Name(String),
+    Name(VariableName),
     Index(usize),
 }
 
-impl TempVar {
+// TODO: Variable cannot start with an index.
+impl VariableChain {
     fn new(name: &str) -> Result<Option<Self>> {
         // Check if input qualifies as a variable
         let name = if name.contains("{{") && name.contains("}}") {
@@ -306,6 +318,7 @@ impl TempVar {
 
         // Process variable
         let mut chain = vec![];
+        let mut is_loop = false;
         let parts: Vec<&str> = name.split('.').collect();
 
         for part in parts {
@@ -315,9 +328,22 @@ impl TempVar {
             for sub in subparts {
                 // First item is a regular name.
                 if first {
-                    chain.push(VariableType::Name(sub.to_string()));
+                    // Handle special case of "item", which is reserved for loop iterations.
+                    if sub == "item" {
+                        is_loop = true;
+                    }
+
+                    chain.push(VariableType::Name(sub.into()));
                     first = false;
                     continue;
+                }
+
+                // "item" is not allowed to have indexes.
+                if is_loop {
+                    return Err(failure::err_msg(
+                        "'item' is a reserved keyword and is not \
+                    allowed how have array indexes",
+                    ));
                 }
 
                 // Any other items are (array) indexes.
@@ -332,72 +358,29 @@ impl TempVar {
             }
         }
 
-        Ok(Some(TempVar { chain: chain }))
+        Ok(Some(VariableChain {
+            chain: chain,
+            is_loop: is_loop,
+            cursor: Cell::new(0),
+        }))
     }
-}
-
-struct NestedVariable<'a> {
-    names: Vec<VariableName>,
-    index: Cell<usize>,
-    p: PhantomData<&'a ()>,
-}
-
-impl<'a> NestedVariable<'a> {
-    fn new(name: &'a VariableName) -> Self {
-        NestedVariable {
-            names: name
-                .0
-                .split(".")
-                .map(|s| VariableName(s.to_string()))
-                .collect(),
-            index: Cell::new(0),
-            p: PhantomData,
-        }
+    // Fetches the current variable. This call advances the cursor.
+    fn get(&self) -> Option<&VariableType> {
+        let cursor = self.cursor.get();
+        let val = self.chain.get(self.cursor.get());
+        self.cursor.set(cursor + 1);
+        val
     }
-    fn incr_index(&self) {
-        // `Cell::update()` is not stable yet.
-        let current = self.index.get();
-        self.index.set(current + 1);
+    fn reset_cursor(&self) {
+        self.cursor.set(0);
     }
     fn is_loop(&self) -> bool {
-        self.names
-            .first()
-            .map(|v| {
-                if v.as_str() == "item" {
-                    self.incr_index();
-                    true
-                } else {
-                    false
-                }
-            })
-            .unwrap_or(false)
-    }
-    fn array_index(&self) -> Option<(VariableName, usize)> {
-        let index = self.index.get();
-        if let Some(var) = self.names.get(index) {
-            let split = var.0.split("[").collect::<Vec<&str>>();
-            if let Some(dirty_num) = split.get(1) {
-                self.incr_index();
-                return Some((
-                    VariableName(split.get(0).unwrap().to_string()),
-                    str::parse::<usize>(&dirty_num[..dirty_num.len() - 1]).ok()?,
-                ));
-            }
-        }
-
-        None
-    }
-    fn name(&'a self) -> Option<&'a VariableName> {
-        let index = self.index.get();
-        self.names.get(index).map(|v| {
-            self.incr_index();
-            v
-        })
-    }
-    fn generic_name(&self) -> Option<serde_yaml::Value> {
-        self.name().map(|n| serde_yaml::Value::from(n.as_str()))
+        self.is_loop
     }
 }
+
+// struct VarType(HashMap<VariableName, serde_yaml::Value>);
+// struct LoopType(Vec<serde_yaml::Value>);
 
 struct VarPool {
     pool: VarType,
@@ -411,43 +394,56 @@ impl VarPool {
             loop_pool: Default::default(),
         }
     }
+    // Insert variables.
     fn insert(&mut self, vars: VarType) {
         for (name, val) in vars.0 {
             self.pool.0.insert(name, val);
         }
     }
+    // Insert a single key/value.
     fn insert_named(&mut self, name: VariableName, value: serde_yaml::Value) {
         self.insert(VarType([(name, value)].iter().cloned().collect()))
     }
+    // Insert the variables for each loop iteration.
     fn insert_loop(&mut self, pool: LoopType) {
         self.loop_pool = pool;
     }
-    fn get<'a>(&'a self, index: usize, name: &'a VariableName) -> Option<serde_yaml::Value> {
-        let nested = NestedVariable::new(name);
-        if nested.is_loop() {
-            Self::search_nested(&nested, self.loop_pool.0.get(index)?).map(|v| v.clone())
-        } else if let Some((name, array_index)) = nested.array_index() {
-            let seq = self.pool.0.get(&name)?.as_sequence()?;
-            Self::search_nested(&nested, seq.get(array_index)?).map(|v| v.clone())
-        } else {
-            Self::search_nested(&nested, self.pool.0.get(nested.name()?)?).map(|v| v.clone())
-        }
+    fn get<'a>(&'a self, index: usize, name: &VariableChain) -> Option<&'a serde_yaml::Value> {
+        // Fetching for variables is done twice. First, fetch from local pool,
+        // then from global pool. Since `VariableChain::get` will advance the
+        // cursor by one, it must be reset.
+        name.reset_cursor();
+
+        let value = match name.get()? {
+            VariableType::Name(var) => {
+                if name.is_loop() {
+                    self.loop_pool.0.get(index)
+                } else {
+                    self.pool.0.get(var)
+                }
+            }
+            // Should never occur, since this case is handled in the `VariableChain::new()`
+            VariableType::Index(_) => {
+                panic!("Variable name starts with an index: {:?}", name.chain)
+            }
+        }?;
+
+        Self::search_nested(name, value)
     }
     fn search_nested<'a>(
-        nested_var: &'a NestedVariable<'a>,
+        name: &VariableChain,
         value: &'a serde_yaml::Value,
     ) -> Option<&'a serde_yaml::Value> {
-        if let Some(name) = nested_var.generic_name() {
-            if let Some(map) = value.as_mapping() {
-                if let Some(v) = map.get(&name) {
-                    Self::search_nested(nested_var, v)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+        // Check if the variable chain goes deeper.
+        if let Some(var) = name.get() {
+            let value = match var {
+                VariableType::Name(var) => value.get(&var.0),
+                VariableType::Index(index) => value.get(*index),
+            }?;
+
+            Self::search_nested(name, value)
         } else {
+            // If the final variable has been reached, return the value.
             Some(value)
         }
     }
@@ -480,9 +476,9 @@ impl LoopType {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct VariableName(String);
 
-impl VariableName {
-    fn as_str<'a>(&'a self) -> &'a str {
-        self.0.as_str()
+impl From<&str> for VariableName {
+    fn from(value: &str) -> Self {
+        VariableName(value.to_string())
     }
 }
 
@@ -557,98 +553,85 @@ mod tests {
 
     #[test]
     fn nested_variables_simple_names() {
-        let res = TempVar::new("item").unwrap();
+        let res = VariableChain::new("var").unwrap();
         assert!(res.is_none());
 
-        let res = TempVar::new("{{ item }}").unwrap().unwrap();
+        let res = VariableChain::new("{{ var }}").unwrap().unwrap();
+        assert_eq!(res.chain, vec![VariableType::Name("var".into())]);
+
+        let res = VariableChain::new("{{ var.name }}").unwrap().unwrap();
         assert_eq!(
-            res,
-            TempVar {
-                chain: vec![VariableType::Name("item".to_string())]
-            }
+            res.chain,
+            vec![
+                VariableType::Name("var".into()),
+                VariableType::Name("name".into())
+            ]
         );
 
-        let res = TempVar::new("{{ item.name }}").unwrap().unwrap();
+        let res = VariableChain::new("{{ var.name.surname }}")
+            .unwrap()
+            .unwrap();
         assert_eq!(
-            res,
-            TempVar {
-                chain: vec![
-                    VariableType::Name("item".to_string()),
-                    VariableType::Name("name".to_string())
-                ]
-            }
-        );
-
-        let res = TempVar::new("{{ item.name.surname }}").unwrap().unwrap();
-        assert_eq!(
-            res,
-            TempVar {
-                chain: vec![
-                    VariableType::Name("item".to_string()),
-                    VariableType::Name("name".to_string()),
-                    VariableType::Name("surname".to_string())
-                ]
-            }
+            res.chain,
+            vec![
+                VariableType::Name("var".into()),
+                VariableType::Name("name".into()),
+                VariableType::Name("surname".into())
+            ]
         );
     }
 
     #[test]
     fn nested_variables_indexes() {
-        let res = TempVar::new("{{ item.name[0] }}").unwrap().unwrap();
+        let res = VariableChain::new("{{ var.name[0] }}").unwrap().unwrap();
         assert_eq!(
-            res,
-            TempVar {
-                chain: vec![
-                    VariableType::Name("item".to_string()),
-                    VariableType::Name("name".to_string()),
-                    VariableType::Index(0)
-                ]
-            }
+            res.chain,
+            vec![
+                VariableType::Name("var".into()),
+                VariableType::Name("name".into()),
+                VariableType::Index(0)
+            ]
         );
 
-        let res = TempVar::new("{{ item.name[0].surname }}").unwrap().unwrap();
-        assert_eq!(
-            res,
-            TempVar {
-                chain: vec![
-                    VariableType::Name("item".to_string()),
-                    VariableType::Name("name".to_string()),
-                    VariableType::Index(0),
-                    VariableType::Name("surname".to_string()),
-                ]
-            }
-        );
-
-        let res = TempVar::new("{{ item.name[0][4] }}").unwrap().unwrap();
-        assert_eq!(
-            res,
-            TempVar {
-                chain: vec![
-                    VariableType::Name("item".to_string()),
-                    VariableType::Name("name".to_string()),
-                    VariableType::Index(0),
-                    VariableType::Index(4)
-                ]
-            }
-        );
-
-        let res = TempVar::new("{{ item.name[0][4].categories.parts[1][1] }}")
+        let res = VariableChain::new("{{ var.name[0].surname }}")
             .unwrap()
             .unwrap();
         assert_eq!(
-            res,
-            TempVar {
-                chain: vec![
-                    VariableType::Name("item".to_string()),
-                    VariableType::Name("name".to_string()),
-                    VariableType::Index(0),
-                    VariableType::Index(4),
-                    VariableType::Name("categories".to_string()),
-                    VariableType::Name("parts".to_string()),
-                    VariableType::Index(1),
-                    VariableType::Index(1)
-                ]
-            }
+            res.chain,
+            vec![
+                VariableType::Name("var".into()),
+                VariableType::Name("name".into()),
+                VariableType::Index(0),
+                VariableType::Name("surname".into()),
+            ]
+        );
+
+        let res = VariableChain::new("{{ var.name[0][4] }}").unwrap().unwrap();
+        assert_eq!(
+            res.chain,
+            vec![
+                VariableType::Name("var".into()),
+                VariableType::Name("name".into()),
+                VariableType::Index(0),
+                VariableType::Index(4)
+            ]
+        );
+
+        let res = VariableChain::new("{{ var.name[0][4].categories.parts[1][1] }}")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            res.chain,
+            vec![
+                VariableType::Name("var".into()),
+                VariableType::Name("name".into()),
+                VariableType::Index(0),
+                VariableType::Index(4),
+                VariableType::Name("categories".into()),
+                VariableType::Name("parts".into()),
+                VariableType::Index(1),
+                VariableType::Index(1)
+            ]
         );
     }
 
@@ -1056,10 +1039,10 @@ mod tests {
                 category: "{{ category.finance[0] }}"
               vars:
                 category:
-                  business
+                  business:
                     - marketing
                     - customers
-                  finance
+                  finance:
                     - accountant
                     - cfo
         "#;

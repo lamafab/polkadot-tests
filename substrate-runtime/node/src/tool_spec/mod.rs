@@ -54,6 +54,7 @@ mod tests {
         .unwrap()
     }
 
+    /*
     #[test]
     fn genesis() {
         run_tool_spec(
@@ -67,4 +68,5 @@ mod tests {
         )
         .unwrap()
     }
+    */
 }
