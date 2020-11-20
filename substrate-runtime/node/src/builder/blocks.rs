@@ -5,6 +5,7 @@ use crate::Result;
 use sp_api::Core;
 use sp_block_builder::BlockBuilder;
 use sp_inherents::InherentData;
+use sp_runtime::transaction_validity::TransactionValidityError;
 use std::convert::{TryFrom, TryInto};
 use std::mem::take;
 use structopt::StructOpt;
@@ -64,7 +65,7 @@ module!(
                             if validity.exhausted_resources() {
                                 return Err(failure::err_msg("Resources exhausted"));
                             } else {
-                                return Err(failure::err_msg("Invalid transaction"));
+                                return Err(failure::err_msg(format!("Invalid transaction: {}", <TransactionValidityError as Into<&'static str>>::into(validity))));
                             }
                         } else {
                             return Err(failure::err_msg("Apply extrinsic dispatch error"));
