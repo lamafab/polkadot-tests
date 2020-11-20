@@ -53,27 +53,36 @@ module!(
         fn run(self) -> Result<RawExtrinsic> {
             match self.call {
                 CallCmd::Transfer {
-                    genesis: _,
+                    genesis,
                     from,
                     to,
                     balance,
-                } => ClientInMem::new()?
-                    .exec_context(&BlockId::Number(0), || {
-                        create_tx::<ExtrinsicSigner>(
-                            from.try_into()?,
-                            RuntimeCall::Balances(BalancesCall::transfer(
-                                get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
-                                    to.as_str(),
-                                )
-                                .into(),
-                                balance as Balance,
-                            )),
-                            0,
-                        )
-                        .map(|t| RawExtrinsic::from(t))
-                        .map(Some)
-                    })
-                    .map(|extr| extr.unwrap()),
+                } => {
+                    let client = if let Some(chain_spec) = genesis {
+                        ClientInMem::new_with_genesis(chain_spec.try_into()?)
+                    } else {
+                        ClientInMem::new()
+                    }?;
+
+                    client
+                        .exec_context(&BlockId::Number(0), || {
+                            create_tx::<ExtrinsicSigner>(
+                                from.try_into()?,
+                                RuntimeCall::Balances(BalancesCall::transfer(
+                                    get_account_id_from_seed::<<ExtrinsicSigner as Pair>::Public>(
+                                        to.as_str(),
+                                    )
+                                    .into(),
+                                    balance as Balance,
+                                )),
+                                0,
+                            )
+                            .map(|t| RawExtrinsic::from(t))
+                            .map(Some)
+                        })
+                        // Is always `Some` in this case.
+                        .map(|extr| extr.unwrap())
+                }
             }
         }
     }

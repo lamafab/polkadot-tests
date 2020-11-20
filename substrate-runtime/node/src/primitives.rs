@@ -217,6 +217,8 @@ impl TryFrom<TxtExtrinsic> for UncheckedExtrinsic {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, StructOpt)]
 pub struct TxtBlock {
+    #[structopt(short, long)]
+    pub genesis: Option<TxtChainSpec>,
     #[structopt(flatten)]
     pub header: TxtHeader,
     #[structopt(short, long)]
@@ -260,10 +262,6 @@ pub struct TxtHeader {
     pub parent_hash: TxtHash,
     #[structopt(short, long)]
     pub number: TxtBlockNumber,
-    #[structopt(short, long)]
-    pub state_root: TxtHash,
-    #[structopt(short, long)]
-    pub extrinsics_root: TxtHash,
     #[structopt(flatten)]
     pub digest: TxtDigest,
 }
@@ -280,8 +278,14 @@ impl TryFrom<TxtHeader> for Header {
         Ok(Header {
             parent_hash: val.parent_hash.try_into()?,
             number: val.number.try_into()?,
-            state_root: val.state_root.try_into()?,
-            extrinsics_root: val.extrinsics_root.try_into()?,
+            state_root: TxtHash::from_str(
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+            )?
+            .try_into()?,
+            extrinsics_root: TxtHash::from_str(
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+            )?
+            .try_into()?,
             digest: Digest {
                 logs: val
                     .digest

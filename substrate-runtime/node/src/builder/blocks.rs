@@ -6,6 +6,7 @@ use sp_api::Core;
 use sp_block_builder::BlockBuilder;
 use sp_inherents::InherentData;
 use std::convert::{TryFrom, TryInto};
+use std::mem::take;
 use structopt::StructOpt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,12 +38,17 @@ module!(
     impl BlockCmd {
         fn run(self) -> Result<BlockCmdResult> {
             match self.call {
-                CallCmd::BuildBlock { spec_block } => {
+                CallCmd::BuildBlock { mut spec_block } => {
+                    // Create the block by calling the runtime APIs.
+                    let client = if let Some(chain_spec) = take(&mut spec_block.genesis) {
+                        ClientInMem::new_with_genesis(chain_spec.try_into()?)
+                    } else {
+                        ClientInMem::new()
+                    }?;
+
                     // Convert into runtime types.
                     let (at, header, extrinsics) = spec_block.prep()?;
 
-                    // Create the block by calling the runtime APIs.
-                    let client = ClientInMem::new()?;
                     let rt = client.runtime_api();
 
                     rt.initialize_block(&at, &header).map_err(|err| {
